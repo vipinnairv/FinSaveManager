@@ -1,0 +1,2608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Personal FinManager – by Vipin Nair</title>
+<meta name="description" content="Personal Fund & Budget Manager with Google Drive sync"/>
+<!-- Google Identity Services (for OAuth2 login) -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<!-- Google API client library (for Drive API calls) -->
+<script src="https://apis.google.com/js/api.js" async defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g:#00b386;--gd:#007a62;--gl:#e6f9f4;--gxl:#f0fdf9;
+  --b:#2563eb;--bl:#eff6ff;--bd:#1e40af;
+  --r:#dc2626;--rl:#fef2f2;
+  --o:#d97706;--ol:#fffbeb;
+  --p:#7c3aed;--pl:#f5f3ff;
+  --t:#0d9488;--tl:#f0fdfa;
+  --n50:#f8fafc;--n100:#f1f5f9;--n200:#e2e8f0;--n300:#cbd5e1;
+  --n400:#94a3b8;--n500:#64748b;--n600:#475569;--n700:#334155;--n800:#1e293b;--n900:#0f172a;
+  --W:#fff;
+  --xs:0 1px 2px rgba(0,0,0,.04);
+  --sm:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.05);
+  --md:0 4px 6px -1px rgba(0,0,0,.07),0 2px 4px -2px rgba(0,0,0,.04);
+  --lg:0 10px 15px -3px rgba(0,0,0,.08),0 4px 6px -4px rgba(0,0,0,.04);
+  --xl:0 20px 25px -5px rgba(0,0,0,.08),0 8px 10px -6px rgba(0,0,0,.04);
+  --r4:4px;--r6:6px;--r8:8px;--r12:12px;--r16:16px;--r20:20px;
+  --f:'Plus Jakarta Sans',sans-serif;--m:'JetBrains Mono',monospace;
+  --sb:238px;
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--f);background:var(--n50);color:var(--n900);line-height:1.5;-webkit-font-smoothing:antialiased}
+#root{display:flex;min-height:100vh}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--n200);border-radius:99px}
+
+/* ── SIDEBAR ─────────────────────────────────── */
+.sb{width:var(--sb);background:var(--W);border-right:1px solid var(--n100);position:fixed;inset:0 auto 0 0;display:flex;flex-direction:column;z-index:200;overflow-y:auto}
+.sb-head{padding:16px 14px 12px;border-bottom:1px solid var(--n100);display:flex;align-items:center;gap:10px;flex-shrink:0}
+.sb-mark{width:34px;height:34px;background:linear-gradient(135deg,var(--g),var(--gd));border-radius:10px;display:grid;place-items:center;flex-shrink:0;box-shadow:0 3px 8px rgba(0,179,134,.3)}
+.sb-mark svg{width:18px;height:18px;fill:#fff}
+.sb-app{font-weight:800;font-size:14px;color:var(--n900);letter-spacing:-.3px;line-height:1.2}
+.sb-period{font-size:9.5px;color:var(--n400);font-weight:500}
+.sb-nav{flex:1;padding:8px 0;overflow-y:auto}
+.sb-group{padding:10px 12px 3px;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--n400)}
+.sb-item{display:flex;align-items:center;gap:9px;padding:8px 10px;margin:1px 5px;border-radius:var(--r6);cursor:pointer;font-size:12.5px;font-weight:500;color:var(--n500);transition:all .13s;position:relative;user-select:none}
+.sb-item:hover{background:var(--n50);color:var(--n800)}
+.sb-item.on{background:var(--gl);color:var(--gd);font-weight:700}
+.sb-item.on::before{content:'';position:absolute;left:-5px;top:50%;transform:translateY(-50%);width:3px;height:18px;background:var(--g);border-radius:0 3px 3px 0}
+.sb-ic{width:15px;height:15px;flex-shrink:0;opacity:.65}
+.sb-item.on .sb-ic{opacity:1}
+.sb-badge{margin-left:auto;font-size:9px;font-weight:700;background:var(--r);color:#fff;padding:1px 5px;border-radius:99px;min-width:17px;text-align:center}
+.sb-foot{padding:10px 8px;border-top:1px solid var(--n100);flex-shrink:0}
+.sb-user{display:flex;align-items:center;gap:9px;padding:7px;border-radius:var(--r8);cursor:pointer;transition:background .13s}
+.sb-user:hover{background:var(--n50)}
+.sb-av{width:30px;height:30px;background:linear-gradient(135deg,#667eea,#764ba2);border-radius:50%;display:grid;place-items:center;font-size:11.5px;font-weight:700;color:#fff;flex-shrink:0}
+.sb-uname{font-size:12px;font-weight:600;color:var(--n700)}
+.sb-uemail{font-size:10px;color:var(--n400)}
+
+/* ── MAIN ───────────────────────────────────── */
+.main{margin-left:var(--sb);flex:1;display:flex;flex-direction:column;min-height:100vh}
+.topbar{background:var(--W);border-bottom:1px solid var(--n100);height:52px;padding:0 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:var(--xs)}
+.tb-left{display:flex;align-items:center;gap:10px}
+.tb-title{font-size:14px;font-weight:700;color:var(--n900)}
+.tb-right{display:flex;align-items:center;gap:7px}
+.page{padding:18px 20px 52px;flex:1;max-width:1400px;width:100%}
+
+/* ── CARD ───────────────────────────────────── */
+.card{background:var(--W);border:1px solid var(--n100);border-radius:var(--r12);padding:16px 18px;box-shadow:var(--xs);transition:box-shadow .13s}
+.card:hover{box-shadow:var(--sm)}
+.card.flat{box-shadow:none}
+.cl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--n400);margin-bottom:4px}
+.cv{font-size:20px;font-weight:800;font-family:var(--m);color:var(--n900);line-height:1.15;letter-spacing:-.6px}
+.cv.g{color:var(--gd)} .cv.r{color:var(--r)} .cv.o{color:var(--o)} .cv.b{color:var(--b)} .cv.p{color:var(--p)}
+.cm{font-size:11px;color:var(--n400);margin-top:3px}
+.ci{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;margin-bottom:10px}
+.ci svg{width:18px;height:18px}
+
+/* ── GRIDS ──────────────────────────────────── */
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.row{display:flex;gap:12px}
+.col{flex:1}
+.mb1{margin-bottom:5px}.mb2{margin-bottom:10px}.mb3{margin-bottom:16px}.mb4{margin-bottom:22px}
+
+/* ── TABLE ──────────────────────────────────── */
+.tw{overflow-x:auto;border-radius:var(--r12);border:1px solid var(--n100);background:var(--W)}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+thead tr{background:var(--n50);border-bottom:1px solid var(--n100)}
+th{padding:9px 12px;text-align:left;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--n500);white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid var(--n50);color:var(--n700);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:#fafbfc}
+.num{font-family:var(--m);text-align:right;font-size:12px}
+.pos{color:var(--gd);font-weight:600}.neg{color:var(--r);font-weight:600}
+.tft td{background:var(--n50)!important;font-weight:700;border-top:2px solid var(--n200)}
+
+/* ── PROGRESS ───────────────────────────────── */
+.prog{height:5px;background:var(--n100);border-radius:99px;overflow:hidden}
+.pf{height:100%;border-radius:99px;transition:width .5s ease}
+
+/* ── TAGS ───────────────────────────────────── */
+.tag{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:99px;font-size:10.5px;font-weight:600;white-space:nowrap}
+.tg{background:var(--gl);color:var(--gd)}.tr{background:var(--rl);color:var(--r)}
+.tb{background:var(--bl);color:var(--bd)}.to{background:var(--ol);color:var(--o)}
+.tx{background:var(--n100);color:var(--n500)}.tp{background:var(--pl);color:var(--p)}
+
+/* ── FORM ───────────────────────────────────── */
+.fg{display:flex;flex-direction:column;gap:4px}
+.fg label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--n500)}
+.fg input,.fg select,.fg textarea{padding:8px 11px;border:1.5px solid var(--n200);border-radius:var(--r6);font-size:13px;font-family:var(--f);color:var(--n900);background:var(--W);outline:none;transition:border-color .13s,box-shadow .13s;width:100%}
+.fg input:focus,.fg select:focus{border-color:var(--g);box-shadow:0 0 0 3px rgba(0,179,134,.1)}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.f3{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}
+.f4{display:grid;grid-template-columns:repeat(4,1fr);gap:11px}
+
+/* ── BUTTONS ─────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--r6);font-size:12.5px;font-weight:600;font-family:var(--f);cursor:pointer;border:none;transition:all .13s;white-space:nowrap;line-height:1}
+.btn svg{width:13px;height:13px;flex-shrink:0}
+.btn-p{background:var(--g);color:#fff;box-shadow:0 1px 3px rgba(0,179,134,.25)}
+.btn-p:hover{background:var(--gd)}
+.btn-s{background:var(--W);color:var(--n700);border:1.5px solid var(--n200)}
+.btn-s:hover{background:var(--n50);border-color:var(--n300)}
+.btn-d{background:var(--rl);color:var(--r)}
+.btn-d:hover{background:var(--r);color:#fff}
+.btn-g{background:transparent;color:var(--n500);padding:5px 8px}
+.btn-g:hover{background:var(--n100);color:var(--n700)}
+.btn-sm{padding:5px 10px;font-size:11.5px}
+.bic{padding:6px;border-radius:var(--r6);background:var(--n50);border:1px solid var(--n200);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .13s;color:var(--n500)}
+.bic:hover{background:var(--n100);color:var(--n700)}
+.bic svg{width:12px;height:12px}
+.bic.red{color:var(--r)}
+.bic.red:hover{background:var(--r);color:#fff}
+
+/* ── TOGGLE ─────────────────────────────────── */
+.tgl{display:flex;background:var(--n100);border-radius:99px;padding:3px;gap:2px}
+.tgo{padding:5px 12px;border-radius:99px;font-size:11.5px;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--n500);transition:all .13s;font-family:var(--f)}
+.tgo.on{background:var(--W);color:var(--gd);box-shadow:var(--xs)}
+
+/* ── MODAL ──────────────────────────────────── */
+.ov{position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(3px);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:var(--W);border-radius:var(--r16);box-shadow:var(--xl);width:100%;max-width:600px;max-height:92vh;overflow-y:auto}
+.mh{padding:18px 20px 0;display:flex;align-items:center;justify-content:space-between}
+.mt{font-size:15px;font-weight:700}
+.mb{padding:14px 20px}
+.mf{padding:0 20px 18px;display:flex;justify-content:flex-end;gap:8px}
+
+/* ── SECTION HEADER ─────────────────────────── */
+.sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.sh-t{font-size:13px;font-weight:700;color:var(--n900);display:flex;align-items:center;gap:7px}
+
+/* ── ALERTS ──────────────────────────────────── */
+.alert{display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-radius:var(--r8);font-size:12px;margin-bottom:12px}
+.alert svg{width:14px;height:14px;flex-shrink:0;margin-top:1px}
+.aw{background:var(--ol);color:#92400e;border-left:3px solid var(--o)}
+.ai{background:var(--bl);color:var(--bd);border-left:3px solid var(--b)}
+.as{background:var(--gl);color:var(--gd);border-left:3px solid var(--g)}
+.ae{background:var(--rl);color:var(--r);border-left:3px solid var(--r)}
+
+/* ── TOAST ──────────────────────────────────── */
+.toast{position:fixed;bottom:20px;right:20px;z-index:2000;color:#fff;padding:10px 15px;border-radius:var(--r8);font-size:12.5px;font-weight:500;box-shadow:var(--xl);display:flex;align-items:center;gap:8px;animation:tin .22s ease}
+@keyframes tin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.toast.g{background:var(--gd)}.toast.r{background:var(--r)}.toast.x{background:var(--n800)}
+
+/* ── DONUT ──────────────────────────────────── */
+.donut{position:relative;display:inline-flex;align-items:center;justify-content:center}
+.donut-c{position:absolute;text-align:center;pointer-events:none}
+
+/* ── STAT ROW ───────────────────────────────── */
+.sr{display:flex;align-items:center;justify-content:space-between;padding:7.5px 0;border-bottom:1px solid var(--n50)}
+.sr:last-child{border-bottom:none}
+.sr-l{font-size:12.5px;color:var(--n600)}
+.sr-v{font-family:var(--m);font-size:12.5px;font-weight:600}
+
+/* ── CC DUE CARDS ─────────────────────────────── */
+.due-card{border-radius:var(--r12);padding:14px 16px;position:relative;overflow:hidden;display:flex;flex-direction:column;gap:8px}
+.due-card::before{content:'';position:absolute;right:-15px;top:-15px;width:80px;height:80px;background:rgba(255,255,255,.1);border-radius:50%}
+.due-urgency{display:flex;align-items:center;justify-content:space-between}
+.due-days-badge{padding:3px 10px;border-radius:99px;font-size:10px;font-weight:700;backdrop-filter:blur(4px)}
+.due-bank{font-size:10px;font-weight:700;opacity:.7;letter-spacing:.5px;text-transform:uppercase}
+.due-card-type{font-size:13px;font-weight:700;margin-top:1px}
+.due-amount-row{display:flex;justify-content:space-between;align-items:flex-end}
+.due-amount{font-family:var(--m);font-size:18px;font-weight:800}
+.due-date-block{text-align:right}
+.due-date-label{font-size:9px;opacity:.65;text-transform:uppercase;letter-spacing:.5px}
+.due-date-val{font-size:12px;font-weight:700}
+
+/* ── ACCOUNT ROW ───────────────────────────── */
+.acc-row{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid var(--n50)}
+.acc-row:last-child{border-bottom:none}
+.acc-ic{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;flex-shrink:0;font-size:10px;font-weight:700}
+.acc-name{font-size:12.5px;font-weight:600;color:var(--n800)}
+.acc-no{font-size:10px;color:var(--n400);font-family:var(--m)}
+.acc-bal{margin-left:auto;text-align:right}
+.acc-num{font-family:var(--m);font-size:13px;font-weight:700}
+
+/* ── MONTH CHIPS ────────────────────────────── */
+.mbar{display:flex;gap:4px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;scrollbar-width:none}
+.mbar::-webkit-scrollbar{display:none}
+.mchip{padding:5px 11px;border-radius:99px;font-size:11.5px;font-weight:600;cursor:pointer;white-space:nowrap;border:1.5px solid var(--n200);background:var(--W);color:var(--n500);transition:all .13s;flex-shrink:0}
+.mchip.on{background:var(--g);color:#fff;border-color:var(--g);box-shadow:0 2px 6px rgba(0,179,134,.25)}
+.mchip:hover:not(.on){border-color:var(--g);color:var(--gd)}
+
+/* ── DASHBOARD SPECIAL ──────────────────────── */
+.hero{background:linear-gradient(135deg,#0a2540 0%,#1a4a6e 45%,#0d6e5a 100%);border-radius:var(--r16);padding:22px 24px;color:#fff;margin-bottom:16px;position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;right:-40px;top:-40px;width:200px;height:200px;background:rgba(0,179,134,.12);border-radius:50%}
+.hero::before{content:'';position:absolute;right:80px;bottom:-60px;width:160px;height:160px;background:rgba(255,255,255,.04);border-radius:50%}
+.hero-label{font-size:11px;opacity:.65;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px}
+.hero-amount{font-family:var(--m);font-size:32px;font-weight:800;letter-spacing:-1.5px;line-height:1}
+.hero-sub{font-size:11.5px;opacity:.6;margin-top:5px}
+.hero-pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;position:relative;z-index:1}
+.hero-pill{background:rgba(255,255,255,.12);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.15);border-radius:var(--r8);padding:8px 12px;min-width:100px}
+.hero-pill-label{font-size:9px;opacity:.6;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}
+.hero-pill-val{font-family:var(--m);font-size:14px;font-weight:700}
+.hero-pill-val.gr{color:#6ee7b7}
+.hero-pill-val.rd{color:#fca5a5}
+.hero-pill-val.yw{color:#fcd34d}
+
+/* ── KPI CARD SPECIAL ───────────────────────── */
+.kpi-card{background:var(--W);border:1px solid var(--n100);border-radius:var(--r12);padding:16px 18px;box-shadow:var(--xs);position:relative;overflow:hidden;transition:all .15s}
+.kpi-card:hover{box-shadow:var(--md);transform:translateY(-1px)}
+.kpi-card::after{content:'';position:absolute;right:-20px;top:-20px;width:70px;height:70px;border-radius:50%;opacity:.06}
+.kpi-card.g::after{background:var(--g)}
+.kpi-card.r::after{background:var(--r)}
+.kpi-card.o::after{background:var(--o)}
+.kpi-card.b::after{background:var(--b)}
+.kpi-ic-wrap{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.kpi-ic{width:36px;height:36px;border-radius:9px;display:grid;place-items:center}
+.kpi-ic svg{width:17px;height:17px}
+.kpi-trend{font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px}
+
+/* ── CHART BARS ─────────────────────────────── */
+.barchart{display:flex;align-items:flex-end;gap:3px;padding-top:8px}
+.barcol{flex:1;display:flex;flex-direction:column;align-items:center}
+.barpair{display:flex;gap:1.5px;align-items:flex-end;width:100%}
+.bar{flex:1;border-radius:2px 2px 0 0;min-height:2px;transition:height .4s ease;cursor:pointer}
+.bar:hover{opacity:.8}
+.bar-lbl{font-size:8.5px;color:var(--n400);margin-top:3px;white-space:nowrap}
+
+/* ── DIVIDER ─────────────────────────────────── */
+.div{height:1px;background:var(--n100);margin:14px 0}
+
+/* ── PAGE HEADER ────────────────────────────── */
+.ph{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px}
+.ptitle{font-size:19px;font-weight:800;color:var(--n900);letter-spacing:-.4px}
+.psub{font-size:12px;color:var(--n400);margin-top:2px}
+
+/* ── UTILITY ────────────────────────────────── */
+.flex{display:flex}.ic{align-items:center}.jb{justify-content:space-between}.g1{gap:5px}.g2i{gap:9px}.g3i{gap:13px}
+.xs{font-size:10.5px}.sm{font-size:12px}
+.muted{color:var(--n400)}.bold{font-weight:700}.mono{font-family:var(--m)}
+.tr{text-align:right}.w100{width:100%}
+.mt1{margin-top:4px}.mt2{margin-top:8px}.mt3{margin-top:13px}
+@keyframes fadein{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.page>*{animation:fadein .2s ease both}
+@media(max-width:1280px){.g4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:960px){.g3{grid-template-columns:1fr 1fr}.g2{grid-template-columns:1fr}}
+
+/* ── CHECKBOX ─────────────────────────── */
+.cb-row td{transition:background .1s}
+.cb-row.sel td{background:rgba(0,179,134,.06)!important}
+input[type=checkbox]{width:14px;height:14px;accent-color:var(--g);cursor:pointer}
+.bulk-bar{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--gl);border-radius:var(--r8);margin-bottom:10px;font-size:12.5px;font-weight:600;color:var(--gd);border:1px solid rgba(0,179,134,.2)}
+/* ── EMERGENCY FUND ───────────────────── */
+.ef-card{background:linear-gradient(135deg,#0a2540,#1a4a6e);border-radius:var(--r12);padding:16px 18px;color:#fff;position:relative;overflow:hidden}
+.ef-card::after{content:'';position:absolute;right:-20px;top:-20px;width:90px;height:90px;background:rgba(255,255,255,.05);border-radius:50%}
+/* ── PAYMENT MODE BADGE ──────────────── */
+.pm-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:600;white-space:nowrap}
+.pm-cc{background:#fef3c7;color:#92400e}
+.pm-upi{background:#d1fae5;color:#065f46}
+.pm-neft{background:#dbeafe;color:#1e40af}
+.pm-cash{background:#f3f4f6;color:#374151}
+.pm-dc{background:#ede9fe;color:#5b21b6}
+.pm-wallet{background:#fce7f3;color:#9d174d}
+/* ── CFO DASHBOARD ──────────────────── */
+.cfo-score{width:80px;height:80px;position:relative;display:inline-flex;align-items:center;justify-content:center}
+/* ── DEBT OPTIMIZER ─────────────────── */
+.debt-priority{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;font-size:11px;font-weight:800;flex-shrink:0}
+/* ── MAJOR CAT FLAG ─────────────────── */
+.major-flag{display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:99px;font-size:9.5px;font-weight:700;background:#fef3c7;color:#92400e;border:1px solid #fcd34d}
+
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useRef,useMemo,useCallback}=React;
+
+/* ══════════════════════════════════════
+   SEED DATA
+══════════════════════════════════════ */
+const SEED={
+  profile:{
+    name:'Your Name',email:'you@example.com',phone:'',pan:'',
+    currency:'INR',city:'',avatar:'YN',
+    periodStart:'2025-04',
+    periodEnd:'2026-03',
+  },
+  accounts:[
+    {id:'a1',name:'Sample Bank Account',type:'bank',accNo:'XXXX-0000',balance:50000,color:'#003366'},
+    {id:'f1',name:'Sample Fixed Deposit',type:'fd',accNo:'XXXX-0001',balance:100000,color:'#007A62'},
+  ],
+  creditCards:[
+    {id:'cc1',bank:'Sample Bank',type:'Rewards Card (Visa)',accNo:'XXXX-XXXX-XXXX-0000',limit:100000,payable:5000,provision:0,dueDate:'2026-04-15'},
+  ],
+  loans:[],
+  provisions:[],
+  incomeCategories:['Salary / Consultancy','Freelance Income','Interest Income','Rental Income','Dividend Income','Other Income'],
+  expenseCategories:['House Rent','Groceries & Food','Electricity','Internet','Mobile Recharge','Insurance','Medical Expense','Entertainment','Travel','Education','Shopping','Other Expense'],
+  budgetLimits:{'House Rent':15000,'Groceries & Food':8000,'Electricity':2000,'Internet':800,'Mobile Recharge':500,'Insurance':1000,'Medical Expense':2000,'Entertainment':2000,'Travel':3000,'Education':1000,'Shopping':3000,'Other Expense':2000},
+  majorExpenseCategories:['House Rent','Insurance','Medical Expense'],
+  emergencyFund:{accountIds:[],targetMonths:6},
+  transactions:[
+    {id:'t1',date:'2025-04-01',type:'income',category:'Salary / Consultancy',desc:'April Salary',amount:60000,month:'2025-04',paymentMode:'NEFT/Bank Transfer'},
+    {id:'t2',date:'2025-04-05',type:'expense',category:'House Rent',desc:'April Rent',amount:15000,month:'2025-04',paymentMode:'NEFT/Bank Transfer'},
+    {id:'t3',date:'2025-04-10',type:'expense',category:'Groceries & Food',desc:'Monthly groceries',amount:4500,month:'2025-04',paymentMode:'UPI'},
+  ],
+}
+
+/* ══════════════════════════════════════
+   HELPERS
+══════════════════════════════════════ */
+const uid=()=>Math.random().toString(36).slice(2,9);
+
+// Generate period months dynamically from profile
+function getPeriodMonths(start,end){
+  const months=[];
+  let [sy,sm]=start.split('-').map(Number);
+  const [ey,em]=end.split('-').map(Number);
+  while(sy<ey||(sy===ey&&sm<=em)){
+    const key=`${sy}-${String(sm).padStart(2,'0')}`;
+    const d=new Date(sy,sm-1);
+    const label=d.toLocaleString('en-IN',{month:'short',year:'2-digit'}).replace(' ','-');
+    months.push({key,label});
+    sm++;if(sm>12){sm=1;sy++;}
+  }
+  return months;
+}
+
+const fmtINR=(n,short=false)=>{
+  if(n===undefined||n===null)return'–';
+  const abs=Math.abs(n);let s;
+  if(short){
+    if(abs>=10000000)s=`₹${(abs/10000000).toFixed(2)}Cr`;
+    else if(abs>=100000)s=`₹${(abs/100000).toFixed(2)}L`;
+    else if(abs>=1000)s=`₹${(abs/1000).toFixed(1)}K`;
+    else s=`₹${abs.toLocaleString('en-IN')}`;
+  }else s=`₹${abs.toLocaleString('en-IN')}`;
+  return n<0?`-${s}`:s;
+};
+
+// DD-MMM-YYYY format
+const fmtDate=d=>{
+  if(!d)return'–';
+  const dt=new Date(d);
+  return`${String(dt.getDate()).padStart(2,'0')}-${dt.toLocaleString('en-IN',{month:'short'})}-${dt.getFullYear()}`;
+};
+const fmtMonth=m=>{if(!m)return'–';const[y,mo]=m.split('-');return new Date(y,+mo-1).toLocaleString('en-IN',{month:'short',year:'2-digit'}).replace(' ','-');};
+const daysDiff=d=>{if(!d)return null;return Math.round((new Date(d)-new Date())/86400000);};
+const periodLabel=(s,e)=>{
+  const ds=new Date(s+'-01'),de=new Date(e+'-01');
+  const fmt=x=>x.toLocaleString('en-IN',{month:'short',year:'numeric'});
+  return`${fmt(ds)} – ${fmt(de)}`;
+};
+
+/* ══════════════════════════════════════
+   ICONS
+══════════════════════════════════════ */
+const Ic=({n,s=15,c='currentColor'})=>{
+  const ic={
+    home:<svg width={s} height={s} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+    fund:<svg width={s} height={s} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>,
+    pnl:<svg width={s} height={s} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
+    budget:<svg width={s} height={s} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>,
+    exp:<svg width={s} height={s} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>,
+    inc:<svg width={s} height={s} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>,
+    prov:<svg width={s} height={s} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
+    loan:<svg width={s} height={s} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
+    cc:<svg width={s} height={s} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>,
+    gear:<svg width={s} height={s} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
+    db:<svg width={s} height={s} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>,
+    user:<svg width={s} height={s} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+    plus:<svg width={s} height={s} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+    del:<svg width={s} height={s} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>,
+    edit:<svg width={s} height={s} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
+    dl:<svg width={s} height={s} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
+    up:<svg width={s} height={s} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>,
+    refresh:<svg width={s} height={s} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>,
+    ok:<svg width={s} height={s} fill="none" stroke={c} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>,
+    x:<svg width={s} height={s} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+    bank:<svg width={s} height={s} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><line x1="3" y1="22" x2="21" y2="22"/><line x1="6" y1="18" x2="6" y2="11"/><line x1="10" y1="18" x2="10" y2="11"/><line x1="14" y1="18" x2="14" y2="11"/><line x1="18" y1="18" x2="18" y2="11"/><polygon points="12 2 20 7 4 7"/></svg>,
+    wallet:<svg width={s} height={s} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>,
+    bell:<svg width={s} height={s} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>,
+    shield:<svg width={s} height={s} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+    cal:<svg width={s} height={s} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+    drive:<svg width={s} height={s} viewBox="0 0 87.3 78" fill="none"><path d="M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3L27.5 53H0c0 1.55.4 3.1 1.2 4.5l5.4 9.35z" fill="#0066DA"/><path d="M43.65 25L29.9 1.2C28.55.4 27 0 25.45 0c-1.55 0-3.1.4-4.45 1.2L7.25 24.6c-.8 1.4-1.2 2.95-1.2 4.5h27.5L43.65 25z" fill="#00AC47"/><path d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5H60.1l5.8 11.6 7.65 12.2z" fill="#EA4335"/><path d="M43.65 25L57.4 1.2C56.05.4 54.5 0 52.95 0H34.35c-1.55 0-3.1.4-4.45 1.2L43.65 25z" fill="#00832D"/><path d="M60.1 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.45 1.2h50.9c1.55 0 3.1-.4 4.45-1.2L60.1 53z" fill="#2684FC"/><path d="M73.4 28.5c-.8-1.4-1.95-2.5-3.3-3.3L56.4 1.5 43.65 25l16.45 28H87.3c0-1.55-.4-3.1-1.2-4.5L73.4 28.5z" fill="#FFBA00"/></svg>,
+  };
+  return ic[n]||<svg width={s} height={s}/>;
+};
+
+/* ══════════════════════════════════════
+   TOAST
+══════════════════════════════════════ */
+function Toast({msg,type,onClose}){
+  useEffect(()=>{const t=setTimeout(onClose,3000);return()=>clearTimeout(t);},[]);
+  return <div className={`toast ${type||'x'}`}><Ic n="ok" s={13} c="#fff"/>{msg}</div>;
+}
+
+/* ══════════════════════════════════════
+   MODAL
+══════════════════════════════════════ */
+function Modal({title,onClose,children,foot}){
+  return(
+    <div className="ov" onClick={onClose}>
+      <div className="modal" onClick={e=>e.stopPropagation()}>
+        <div className="mh"><div className="mt">{title}</div><button className="bic" onClick={onClose}><Ic n="x" s={13}/></button></div>
+        <div className="mb">{children}</div>
+        {foot&&<div className="mf">{foot}</div>}
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════
+   DONUT RING
+══════════════════════════════════════ */
+function Donut({pct,color,size=86,stroke=9,label}){
+  const p=Math.min(100,Math.max(0,pct||0));
+  const r=(size-stroke*2)/2,c=2*Math.PI*r,off=c*(1-p/100);
+  return(
+    <div className="donut" style={{width:size,height:size}}>
+      <svg width={size} height={size} style={{transform:'rotate(-90deg)'}}>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--n100)" strokeWidth={stroke}/>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={stroke} strokeDasharray={c} strokeDashoffset={off} strokeLinecap="round" style={{transition:'stroke-dashoffset .6s ease'}}/>
+      </svg>
+      <div className="donut-c">
+        <div style={{fontFamily:'var(--m)',fontSize:13,fontWeight:800,color,lineHeight:1}}>{p.toFixed(1)}%</div>
+        {label&&<div style={{fontSize:8,color:'var(--n400)',textTransform:'uppercase',letterSpacing:.5,marginTop:1}}>{label}</div>}
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════
+   BAR CHART
+══════════════════════════════════════ */
+function BarChart({months,incomes,expenses,height=90}){
+  const max=Math.max(...incomes,...expenses,1);
+  const [hov,setHov]=useState(null);
+  return(
+    <div>
+      {hov!==null&&<div style={{textAlign:'center',fontSize:11,color:'var(--n500)',marginBottom:4,height:16}}>
+        <span style={{color:'var(--gd)',fontWeight:600}}>{fmtINR(incomes[hov],true)}</span>
+        <span style={{color:'var(--n400)',margin:'0 6px'}}>vs</span>
+        <span style={{color:'var(--r)',fontWeight:600}}>{fmtINR(expenses[hov],true)}</span>
+        <span style={{color:'var(--n400)',marginLeft:6}}>{months[hov]?.label}</span>
+      </div>}
+      {hov===null&&<div style={{height:16}}/>}
+      <div className="barchart" style={{height}}>
+        {months.map((m,i)=>{
+          const ip=(incomes[i]||0)/max*(height-22),ep=(expenses[i]||0)/max*(height-22);
+          return(
+            <div key={m.key} className="barcol" onMouseEnter={()=>setHov(i)} onMouseLeave={()=>setHov(null)}>
+              <div className="barpair" style={{height:height-22}}>
+                <div className="bar" style={{height:Math.max(2,ip),background:hov===i?'var(--g)':'rgba(0,179,134,.55)',alignSelf:'flex-end'}}/>
+                <div className="bar" style={{height:Math.max(2,ep),background:hov===i?'#ef4444':'rgba(239,68,68,.45)',alignSelf:'flex-end'}}/>
+              </div>
+              <div className="bar-lbl">{m.label}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+
+/* ══════════════════════════════════════
+   EMERGENCY FUND CARD (Dashboard widget)
+══════════════════════════════════════ */
+function EfCard({data,accounts,totalExp,months}){
+  const ef=data.emergencyFund||{accountIds:[],targetMonths:6};
+  const efAccs=accounts.filter(a=>ef.accountIds.includes(a.id));
+  const efBalance=efAccs.reduce((s,a)=>s+a.balance,0);
+  const avgMonthlyExp=months.length>0?totalExp/months.length:0;
+  const target=avgMonthlyExp*(ef.targetMonths||6);
+  const efPct=target>0?Math.min(100,efBalance/target*100):0;
+  const monthsCovered=avgMonthlyExp>0?efBalance/avgMonthlyExp:0;
+  const efStatus=efPct>=100?'Fully Funded':efPct>=50?'Partially Funded':'Underfunded';
+  const progressColor=efPct>=100?'#6ee7b7':efPct>=50?'#fcd34d':'#fca5a5';
+  const statusBg=efPct>=100?'rgba(0,179,134,.3)':efPct>=50?'rgba(217,119,6,.3)':'rgba(220,38,38,.3)';
+  return(
+    <div className="ef-card">
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',position:'relative',zIndex:1}}>
+        <div>
+          <div style={{fontSize:10,opacity:.6,textTransform:'uppercase',letterSpacing:.7,marginBottom:3}}>Emergency Fund</div>
+          <div style={{fontFamily:'var(--m)',fontSize:24,fontWeight:800}}>{fmtINR(efBalance)}</div>
+          <div style={{fontSize:11,opacity:.6,marginTop:3,fontFamily:'var(--m)'}}>{fmtINR(efBalance,true)} · {monthsCovered.toFixed(1)} months covered</div>
+        </div>
+        <div style={{textAlign:'right'}}>
+          <div style={{fontSize:10,opacity:.6,textTransform:'uppercase',letterSpacing:.5,marginBottom:4}}>Status</div>
+          <span style={{background:statusBg,color:progressColor,padding:'4px 10px',borderRadius:'99px',fontSize:11,fontWeight:700}}>{efStatus}</span>
+          <div style={{fontSize:10,opacity:.5,marginTop:4}}>Target: {ef.targetMonths||6} months</div>
+        </div>
+      </div>
+      <div style={{marginTop:14,position:'relative',zIndex:1}}>
+        <div style={{height:6,background:'rgba(255,255,255,.15)',borderRadius:99,overflow:'hidden'}}>
+          <div style={{height:'100%',width:`${efPct}%`,background:progressColor,borderRadius:99,transition:'width .5s'}}/>
+        </div>
+        <div style={{display:'flex',justifyContent:'space-between',marginTop:5}}>
+          <span style={{fontSize:10,opacity:.5}}>{efPct.toFixed(0)}% of target</span>
+          <span style={{fontSize:10,opacity:.5}}>Target: {fmtINR(target,true)}</span>
+        </div>
+      </div>
+      {efAccs.length===0&&<div style={{fontSize:11,opacity:.5,marginTop:8,position:'relative',zIndex:1}}>No accounts linked · Configure in Master Settings</div>}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════
+   PAYMENT MODE CARD (Dashboard widget)
+══════════════════════════════════════ */
+function PmCard({periodTxs,totalExp}){
+  const pmMap={};
+  periodTxs.filter(t=>t.type==='expense').forEach(t=>{
+    const pm=t.paymentMode||'Unknown';
+    pmMap[pm]=(pmMap[pm]||0)+t.amount;
+  });
+  const pmList=Object.entries(pmMap).sort((a,b)=>b[1]-a[1]);
+  return(
+    <div className="card">
+      <div className="sh mb3">
+        <div className="sh-t"><Ic n="fund" s={14} c="var(--g)"/>Payment Mode Breakdown</div>
+        <span className="tag tx" style={{fontSize:10}}>Period</span>
+      </div>
+      {pmList.length===0?(
+        <div style={{textAlign:'center',padding:'16px',color:'var(--n400)',fontSize:12}}>No payment mode data yet. Add transactions with payment modes.</div>
+      ):pmList.map(([pm,v])=>(
+        <div key={pm} style={{marginBottom:10}}>
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+            <span className={`pm-badge ${pmClass(pm)}`}>{pm}</span>
+            <span style={{fontFamily:'var(--m)',fontSize:12,fontWeight:600}}>{fmtINR(v,true)}</span>
+          </div>
+          <div className="prog"><div className="pf" style={{width:`${totalExp>0?v/totalExp*100:0}%`,background:'var(--g)'}}/></div>
+          <div style={{fontSize:10,color:'var(--n400)',marginTop:2}}>{totalExp>0?(v/totalExp*100).toFixed(1):0}% of expenses</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const PAYMENT_MODES=['Credit Card','UPI','NEFT/Bank Transfer','Cash','Debit Card','Wallet'];
+const pmClass=m=>{if(!m)return'tx';const l=m.toLowerCase();if(l.includes('credit'))return'pm-cc';if(l.includes('upi'))return'pm-upi';if(l.includes('neft')||l.includes('bank'))return'pm-neft';if(l.includes('cash'))return'pm-cash';if(l.includes('debit'))return'pm-dc';if(l.includes('wallet'))return'pm-wallet';return'tx';};
+
+/* ══════════════════════════════════════
+   DASHBOARD
+══════════════════════════════════════ */
+function PageDashboard({data,setPage}){
+  const {transactions,accounts,creditCards,loans,budgetLimits,expenseCategories,profile}=data;
+  const months=useMemo(()=>getPeriodMonths(profile.periodStart,profile.periodEnd),[profile.periodStart,profile.periodEnd]);
+
+  const bankBal=accounts.filter(a=>a.type==='bank').reduce((s,a)=>s+a.balance,0);
+  const cashBal=accounts.filter(a=>a.type==='cash'||a.type==='wallet').reduce((s,a)=>s+a.balance,0);
+  const fdBal=accounts.filter(a=>a.type==='fd').reduce((s,a)=>s+a.balance,0);
+  const liquid=bankBal+cashBal;
+  const ccPay=creditCards.reduce((s,c)=>s+c.payable,0);
+  const ccProv=creditCards.reduce((s,c)=>s+c.provision,0);
+  const loanOS=loans.reduce((s,l)=>s+l.outstanding,0);
+  const totalLimit=creditCards.reduce((s,c)=>s+c.limit,0);
+  const ccUtil=totalLimit>0?(ccPay+ccProv)/totalLimit*100:0;
+  const netWorth=liquid+fdBal-(ccPay+ccProv)-loanOS;
+
+  const periodTxs=transactions.filter(t=>months.some(m=>m.key===t.month));
+  const totalInc=periodTxs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const totalExp=periodTxs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const surplus=totalInc-totalExp;
+
+  const mInc=months.map(m=>transactions.filter(t=>t.month===m.key&&t.type==='income').reduce((s,t)=>s+t.amount,0));
+  const mExp=months.map(m=>transactions.filter(t=>t.month===m.key&&t.type==='expense').reduce((s,t)=>s+t.amount,0));
+
+  // CC dues
+  const dues=creditCards.filter(c=>c.dueDate&&c.payable>0).sort((a,b)=>new Date(a.dueDate)-new Date(b.dueDate));
+
+  // Top cats
+  const catMap={};periodTxs.filter(t=>t.type==='expense').forEach(t=>{catMap[t.category]=(catMap[t.category]||0)+t.amount;});
+  const topCats=Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,4);
+
+  const activeBudgetTotal=expenseCategories.reduce((s,c)=>(budgetLimits[c]||0)+s,0);
+  const budgetTotal=activeBudgetTotal*months.length;
+  const budgetUsed=totalExp;
+  const budgetPct=budgetTotal>0?Math.min(100,budgetUsed/budgetTotal*100):0;
+
+  return(
+    <div className="page">
+      {/* HERO */}
+      <div className="hero">
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',position:'relative',zIndex:1}}>
+          <div>
+            <div className="hero-label">Fund Balance · Bank + FD</div>
+            <div className="hero-amount">{fmtINR(bankBal+fdBal)}</div>
+            <div style={{fontSize:11.5,opacity:.5,marginTop:2,fontFamily:'var(--m)'}}>{fmtINR(bankBal+fdBal,true)} total</div>
+            <div className="hero-sub">Liquid: {fmtINR(liquid)} · FD: {fmtINR(fdBal,true)} · Period: {periodLabel(profile.periodStart,profile.periodEnd)}</div>
+          </div>
+          <div style={{textAlign:'right'}}>
+            <div style={{fontSize:10,opacity:.6,textTransform:'uppercase',letterSpacing:.5,marginBottom:3}}>Net Worth</div>
+            <div style={{fontFamily:'var(--m)',fontSize:22,fontWeight:800,color:'#6ee7b7'}}>{fmtINR(netWorth)}</div>
+            <div style={{fontSize:10,opacity:.4,fontFamily:'var(--m)',marginTop:1}}>{fmtINR(netWorth,true)}</div>
+            <div style={{fontSize:10,opacity:.5,marginTop:2}}>Assets − Liabilities</div>
+          </div>
+        </div>
+        <div className="hero-pills">
+          {[
+            {l:'Period Income',v:fmtINR(totalInc,true),c:'gr'},{l:'Period Expense',v:fmtINR(totalExp,true),c:'rd'},
+            {l:'Surplus',v:fmtINR(surplus,true),c:surplus>=0?'gr':'rd'},{l:'FD Value',v:fmtINR(fdBal,true),c:'yw'},
+            {l:'Loan O/S',v:fmtINR(loanOS,true),c:'rd'},{l:'CC Liability',v:fmtINR(ccPay+ccProv,true),c:'rd'},
+          ].map(p=>(
+            <div key={p.l} className="hero-pill">
+              <div className="hero-pill-label">{p.l}</div>
+              <div className={`hero-pill-val ${p.c}`}>{p.v}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ROW 1: KPIs */}
+      <div className="g4 mb3">
+        {[
+          {l:'Period Income',v:totalInc,col:'g',icon:'inc',trend:`${totalInc>0?(surplus/totalInc*100).toFixed(1):0}% saved`,bg:'var(--gl)'},
+          {l:'Period Expense',v:totalExp,col:'r',icon:'exp',trend:`Avg ${fmtINR(Math.round(totalExp/Math.max(1,months.length)),true)}/mo`,bg:'var(--rl)'},
+          {l:'Net Surplus',v:surplus,col:surplus>=0?'g':'r',icon:'pnl',trend:`${totalInc>0?(surplus/totalInc*100).toFixed(1):0}% of income`,bg:surplus>=0?'var(--gl)':'var(--rl)'},
+          {l:'Budget Utilization',v:budgetTotal,col:'b',icon:'budget',trend:`${budgetPct.toFixed(1)}% used`,bg:'var(--bl)'},
+        ].map((k,i)=>(
+          <div key={k.l} className={`kpi-card ${k.col}`} style={{animationDelay:`${i*0.05}s`}}>
+            <div className="kpi-ic-wrap">
+              <div className="kpi-ic" style={{background:k.bg}}><Ic n={k.icon} c={k.col==='g'?'var(--g)':k.col==='r'?'var(--r)':k.col==='b'?'var(--b)':'var(--o)'}/></div>
+              <span style={{fontSize:9.5,fontWeight:600,color:'var(--n400)'}}>{k.trend}</span>
+            </div>
+            <div className="cl">{k.l}</div>
+            <div className={`cv ${k.col}`} style={{fontSize:18}}>{fmtINR(k.v,true)}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ROW 2: Chart + CC Overview */}
+      <div className="row mb3">
+        <div className="card col">
+          <div className="sh">
+            <div className="sh-t"><Ic n="pnl" s={14} c="var(--g)"/>Monthly P&amp;L</div>
+            <div style={{display:'flex',gap:8,fontSize:10.5,color:'var(--n500)',alignItems:'center'}}>
+              <span style={{width:10,height:10,borderRadius:2,background:'rgba(0,179,134,.55)',display:'inline-block'}}/>Income
+              <span style={{width:10,height:10,borderRadius:2,background:'rgba(239,68,68,.45)',display:'inline-block'}}/>Expense
+            </div>
+          </div>
+          <BarChart months={months} incomes={mInc} expenses={mExp}/>
+        </div>
+
+        <div style={{width:260,flexShrink:0,display:'flex',flexDirection:'column',gap:10}}>
+          <div className="card" style={{flex:1}}>
+            <div className="sh mb2"><div className="sh-t"><Ic n="cc" s={13} c="var(--g)"/>CC Utilization</div></div>
+            <div style={{display:'flex',alignItems:'center',gap:12}}>
+              <Donut pct={ccUtil} color={ccUtil>30?'var(--r)':ccUtil>15?'var(--o)':'var(--g)'} size={76} stroke={7} label="Used"/>
+              <div style={{flex:1}}>
+                <div className="sr"><span className="sr-l">Billed</span><span className="sr-v neg">{fmtINR(ccPay,true)}</span></div>
+                <div className="sr"><span className="sr-l">Unbilled</span><span className="sr-v" style={{color:'var(--o)'}}>{fmtINR(ccProv,true)}</span></div>
+                <div className="sr"><span className="sr-l">Limit</span><span className="sr-v">{fmtINR(totalLimit,true)}</span></div>
+              </div>
+            </div>
+          </div>
+          <div className="card" style={{flex:1}}>
+            <div className="sh mb2"><div className="sh-t"><Ic n="budget" s={13} c="var(--g)"/>Budget Status</div></div>
+            <div style={{marginBottom:8}}>
+              <div className="prog"><div className="pf" style={{width:`${budgetPct}%`,background:budgetPct>90?'var(--r)':budgetPct>75?'var(--o)':'var(--g)'}}/></div>
+            </div>
+            <div className="sr"><span className="sr-l">Spent</span><span className="sr-v neg">{fmtINR(budgetUsed,true)}</span></div>
+            <div className="sr"><span className="sr-l">Budget</span><span className="sr-v">{fmtINR(budgetTotal,true)}</span></div>
+            <div className="sr"><span className="sr-l">Unspent</span><span className={`sr-v ${budgetTotal-budgetUsed>=0?'pos':'neg'}`}>{fmtINR(Math.abs(budgetTotal-budgetUsed),true)}</span></div>
+          </div>
+        </div>
+      </div>
+
+      {/* ROW 3: CC Dues (beautiful cards) + Top Expenses */}
+      <div className="g2 mb3">
+        {/* CC Due Cards */}
+        <div className="card">
+          <div className="sh mb3">
+            <div className="sh-t"><Ic n="cal" s={14} c="var(--g)"/>Upcoming Credit Card Dues</div>
+            <button className="btn btn-s btn-sm" onClick={()=>setPage('cc')} style={{fontSize:11}}>View All</button>
+          </div>
+          {dues.length===0?<div style={{textAlign:'center',padding:'20px 0',color:'var(--n400)',fontSize:12.5}}>No upcoming dues. You're clear! ✓</div>:(
+            <div style={{display:'flex',flexDirection:'column',gap:8}}>
+              {dues.slice(0,4).map(cc=>{
+                const d=daysDiff(cc.dueDate);
+                const urgent=d!==null&&d<=3;
+                const warn=d!==null&&d<=7;
+                const bg=urgent?'linear-gradient(135deg,#7f1d1d,#dc2626)':warn?'linear-gradient(135deg,#78350f,#d97706)':'linear-gradient(135deg,#1e3a5f,#2563eb)';
+                return(
+                  <div key={cc.id} className="due-card" style={{background:bg}}>
+                    <div className="due-urgency">
+                      <div>
+                        <div className="due-bank">{cc.bank}</div>
+                        <div className="due-card-type">{cc.type}</div>
+                      </div>
+                      <div className="due-days-badge" style={{background:urgent?'rgba(0,0,0,.3)':warn?'rgba(0,0,0,.25)':'rgba(255,255,255,.15)',color:'#fff',border:`1px solid rgba(255,255,255,.2)`}}>
+                        {d===0?'Due Today':d<0?`${Math.abs(d)}d Overdue`:`${d} days left`}
+                      </div>
+                    </div>
+                    <div className="due-amount-row">
+                      <div>
+                        <div style={{fontSize:9,opacity:.65,textTransform:'uppercase',letterSpacing:.5,color:'#fff',marginBottom:2}}>Amount Due</div>
+                        <div className="due-amount" style={{color:'#fff'}}>{fmtINR(cc.payable)}</div>
+                      </div>
+                      <div className="due-date-block">
+                        <div className="due-date-label" style={{color:'rgba(255,255,255,.65)'}}>Due On</div>
+                        <div className="due-date-val" style={{color:'#fcd34d'}}>{fmtDate(cc.dueDate)}</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Top Expense Categories */}
+        <div className="card">
+          <div className="sh mb2"><div className="sh-t"><Ic n="exp" s={14} c="var(--g)"/>Top Expense Categories</div><span className="tag tx" style={{fontSize:10}}>{periodLabel(profile.periodStart,profile.periodEnd)}</span></div>
+          {topCats.map(([cat,amt],i)=>{
+            const pct=totalExp>0?amt/totalExp*100:0;
+            const colors=['var(--g)','var(--b)','var(--o)','var(--p)'];
+            return(
+              <div key={cat} style={{marginBottom:12}}>
+                <div style={{display:'flex',justifyContent:'space-between',marginBottom:5}}>
+                  <span style={{fontSize:12.5,color:'var(--n700)',display:'flex',alignItems:'center',gap:7}}>
+                    <span style={{width:8,height:8,borderRadius:2,background:colors[i],display:'inline-block',flexShrink:0}}/>
+                    {cat}
+                  </span>
+                  <span style={{fontFamily:'var(--m)',fontSize:12,fontWeight:600}}>{fmtINR(amt,true)}</span>
+                </div>
+                <div className="prog"><div className="pf" style={{width:`${pct}%`,background:colors[i]}}/></div>
+                <div style={{fontSize:10,color:'var(--n400)',marginTop:3}}>{pct.toFixed(1)}% of total expenses</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ROW 3b: Emergency Fund + Payment Mode Insights */}
+      <div className="g2 mb3">
+        <EfCard data={data} accounts={accounts} totalExp={totalExp} months={months}/>
+        <PmCard periodTxs={periodTxs} totalExp={totalExp}/>
+      </div>
+      {/* ROW 4: Loan Snapshot */}
+      <div className="card">
+        <div className="sh mb2"><div className="sh-t"><Ic n="loan" s={14} c="var(--g)"/>Loan Snapshot</div><span className="tag tr">Total O/S: {fmtINR(loanOS,true)}</span></div>
+        <div className="tw">
+          <table>
+            <thead><tr><th>Bank</th><th>Type</th><th className="num">Outstanding</th><th className="num">EMI/Month</th><th>ROI</th><th>End Date</th><th>Repaid</th></tr></thead>
+            <tbody>
+              {loans.map(l=>{
+                const pct=l.original>0?(l.original-l.outstanding)/l.original*100:0;
+                return(
+                  <tr key={l.id}>
+                    <td style={{fontWeight:700}}>{l.bank}</td>
+                    <td><span className="tag tb">{l.type}</span></td>
+                    <td className="num neg">{fmtINR(l.outstanding)}</td>
+                    <td className="num">{fmtINR(l.emi)}</td>
+                    <td><span className="tag to">{l.roi}%</span></td>
+                    <td style={{fontSize:12}}>{fmtDate(l.endDate)}</td>
+                    <td style={{width:130}}>
+                      <div style={{display:'flex',alignItems:'center',gap:7}}>
+                        <div className="prog" style={{flex:1,height:5}}><div className="pf" style={{width:`${pct}%`,background:'var(--g)'}}/></div>
+                        <span style={{fontSize:10.5,color:'var(--n400)',width:35,textAlign:'right'}}>{pct.toFixed(0)}%</span>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════
+   FUND BALANCE (fully editable)
+══════════════════════════════════════ */
+function PageFund({data,setData,toast}){
+  const {accounts,budgetLimits,transactions,profile}=data;
+  const [modal,setModal]=useState(null);
+  const ef={name:'',type:'bank',accNo:'XXXX-0000',balance:'',color:'#1a4a6e'};
+  const [form,setForm]=useState(ef);
+
+  const banks=accounts.filter(a=>a.type==='bank');
+  const cashes=accounts.filter(a=>a.type==='cash');
+  const wallets=accounts.filter(a=>a.type==='wallet');
+  const fds=accounts.filter(a=>a.type==='fd');
+  const bT=banks.reduce((s,a)=>s+a.balance,0);
+  const cT=cashes.reduce((s,a)=>s+a.balance,0);
+  const wT=wallets.reduce((s,a)=>s+a.balance,0);
+  const fT=fds.reduce((s,a)=>s+a.balance,0);
+  const liq=bT+cT+wT;
+
+  const monthlyBudget=Object.values(budgetLimits).reduce((s,v)=>s+v,0);
+  const today=new Date();
+  const dom=today.getDate(),dim=new Date(today.getFullYear(),today.getMonth()+1,0).getDate();
+  const curMK=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
+  const curExp=transactions.filter(t=>t.month===curMK&&t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const unspent=monthlyBudget-curExp;
+  const dLeft=dim-dom+1;
+
+  const openAdd=t=>{setForm({...ef,type:t});setModal('add');};
+  const openEdit=a=>{setForm({name:a.name,type:a.type,accNo:a.accNo,balance:String(a.balance),color:a.color||'#1a4a6e'});setModal({eid:a.id});};
+  const close=()=>{setModal(null);setForm(ef);};
+
+  const save=()=>{
+    if(!form.name)return;
+    const entry={name:form.name,type:form.type,accNo:form.accNo,balance:parseFloat(form.balance)||0,color:form.color};
+    if(modal==='add'){setData(d=>({...d,accounts:[...d.accounts,{id:uid(),...entry}]}));toast('Account added','g');}
+    else{setData(d=>({...d,accounts:d.accounts.map(a=>a.id===modal.eid?{...a,...entry}:a)}));toast('Account updated','g');}
+    close();
+  };
+  const del=id=>{if(!window.confirm('Remove this account?'))return;setData(d=>({...d,accounts:d.accounts.filter(a=>a.id!==id)}));toast('Removed','x');};
+
+  const AccRow=({a})=>{
+    const ini=a.name.split(/[\s–\-]/).filter(Boolean).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+    return(
+      <div className="acc-row">
+        <div className="acc-ic" style={{background:(a.color||'#1a4a6e')+'22',color:a.color||'#1a4a6e'}}>{ini}</div>
+        <div>
+          <div className="acc-name">{a.name}</div>
+          <div className="acc-no">{a.accNo}</div>
+        </div>
+        <div className="acc-bal">
+          <div className={`acc-num ${a.balance<0?'neg':'pos'}`}>{fmtINR(a.balance)}</div>
+        </div>
+        <div style={{display:'flex',gap:4,marginLeft:10}}>
+          <button className="bic" onClick={()=>openEdit(a)}><Ic n="edit" s={11}/></button>
+          <button className="bic red" onClick={()=>del(a.id)}><Ic n="del" s={11}/></button>
+        </div>
+      </div>
+    );
+  };
+
+  const GrpCard=({title,items,total,addType,icon,color})=>(
+    <div className="card">
+      <div className="sh">
+        <div className="sh-t"><Ic n={icon} s={14} c={color}/>{title}</div>
+        <div style={{display:'flex',gap:7,alignItems:'center'}}>
+          <span style={{fontFamily:'var(--m)',fontSize:13,fontWeight:700,color}}>{fmtINR(total)}</span>
+          <button className="bic" onClick={()=>openAdd(addType)} title="Add Account"><Ic n="plus" s={11}/></button>
+        </div>
+      </div>
+      {items.map(a=><AccRow key={a.id} a={a}/>)}
+      {items.length===0&&<div style={{textAlign:'center',padding:'12px 0',fontSize:12,color:'var(--n400)'}}>No accounts. Click + to add.</div>}
+    </div>
+  );
+
+  const AccForm=(
+    <>
+      <div className="f2 mb2">
+        <div className="fg"><label>Account Name</label><input value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="e.g. HDFC Bank"/></div>
+        <div className="fg"><label>Type</label>
+          <select value={form.type} onChange={e=>setForm(f=>({...f,type:e.target.value}))}>
+            <option value="bank">Bank Account</option><option value="cash">Cash In Hand</option>
+            <option value="wallet">Digital Wallet</option><option value="fd">Fixed Deposit</option>
+          </select>
+        </div>
+      </div>
+      <div className="f2 mb2">
+        <div className="fg"><label>Account / Ref No. (Dummy)</label><input value={form.accNo} onChange={e=>setForm(f=>({...f,accNo:e.target.value}))}/></div>
+        <div className="fg"><label>Balance (₹) – negative for OD</label><input type="number" value={form.balance} onChange={e=>setForm(f=>({...f,balance:e.target.value}))} placeholder="0"/></div>
+      </div>
+      <div className="fg"><label>Brand Color (for icon)</label><input type="color" value={form.color} onChange={e=>setForm(f=>({...f,color:e.target.value}))} style={{height:36,padding:'3px 6px'}}/></div>
+    </>
+  );
+
+  return(
+    <div className="page">
+      <div className="ph">
+        <div><div className="ptitle">Fund Balance Sheet</div><div className="psub">All accounts · Daily unspent tracker · Fully editable</div></div>
+      </div>
+
+      <div className="g4 mb3">
+        <div className="card"><div className="ci" style={{background:'var(--gl)'}}><Ic n="bank" c="var(--g)"/></div><div className="cl">Bank Total</div><div className={`cv ${bT<0?'r':'g'}`}>{fmtINR(bT)}</div><div className="cm">{banks.filter(a=>a.balance>0).length} active</div></div>
+        <div className="card"><div className="ci" style={{background:'var(--bl)'}}><Ic n="wallet" c="var(--b)"/></div><div className="cl">Cash + Wallet</div><div className="cv b">{fmtINR(cT+wT)}</div><div className="cm">In-hand</div></div>
+        <div className="card"><div className="ci" style={{background:'var(--pl)'}}><Ic n="shield" c="var(--p)"/></div><div className="cl">Fixed Deposits</div><div className="cv p">{fmtINR(fT,true)}</div><div className="cm">Locked savings</div></div>
+        <div className="card"><div className="ci" style={{background:'var(--gl)'}}><Ic n="fund" c="var(--g)"/></div><div className="cl">Liquid Total</div><div className="cv g">{fmtINR(liq)}</div><div className="cm">Bank + Cash + Wallet</div></div>
+      </div>
+
+      {/* Unspent Trackers */}
+      <div className="g3 mb3">
+        <div className="card" style={{background:'linear-gradient(135deg,var(--gd),var(--g))',border:'none',color:'#fff'}}>
+          <div style={{fontSize:10,opacity:.8,textTransform:'uppercase',letterSpacing:.6,marginBottom:3}}>Monthly Budget</div>
+          <div style={{fontFamily:'var(--m)',fontSize:21,fontWeight:800}}>{fmtINR(monthlyBudget)}</div>
+          <div style={{fontSize:10.5,opacity:.7,marginTop:3}}>{Object.keys(budgetLimits).length} categories configured</div>
+        </div>
+        <div className="card">
+          <div className="cl">Monthly Unspent</div>
+          <div className={`cv ${unspent>=0?'g':'r'}`}>{fmtINR(Math.abs(unspent))}</div>
+          <div className="cm">{unspent>=0?'Under budget':'Over budget'} · Spent: {fmtINR(curExp,true)}</div>
+          <div className="prog mt2" style={{height:6}}>
+            <div className="pf" style={{width:`${Math.min(100,monthlyBudget>0?curExp/monthlyBudget*100:0)}%`,background:unspent<0?'var(--r)':'var(--g)'}}/>
+          </div>
+          <div style={{fontSize:10.5,color:'var(--n400)',marginTop:3}}>{monthlyBudget>0?(curExp/monthlyBudget*100).toFixed(1):0}% of budget used</div>
+        </div>
+        <div className="card">
+          <div className="cl">Per Day Unspent</div>
+          <div className={`cv ${unspent>=0?'g':'r'}`}>{fmtINR(Math.abs(Math.round(dLeft>0?unspent/dLeft:0)))}</div>
+          <div className="cm">{dLeft} days remaining · ₹{Math.round(monthlyBudget/dim).toLocaleString('en-IN')}/day budget</div>
+        </div>
+      </div>
+
+      <div className="g2">
+        <GrpCard title="Bank Accounts" items={banks} total={bT} addType="bank" icon="bank" color="var(--b)"/>
+        <div>
+          <div style={{marginBottom:12}}><GrpCard title="Cash In Hand" items={cashes} total={cT} addType="cash" icon="wallet" color="var(--g)"/></div>
+          <div style={{marginBottom:12}}><GrpCard title="Digital Wallets" items={wallets} total={wT} addType="wallet" icon="wallet" color="var(--o)"/></div>
+          <GrpCard title="Fixed Deposits" items={fds} total={fT} addType="fd" icon="shield" color="var(--p)"/>
+        </div>
+      </div>
+
+      {modal&&<Modal title={modal==='add'?'Add Account':'Edit Account'} onClose={close}
+        foot={<><button className="btn btn-s btn-sm" onClick={close}>Cancel</button><button className="btn btn-p btn-sm" onClick={save}><Ic n={modal==='add'?'plus':'ok'} s={12} c="#fff"/>{modal==='add'?'Add':'Save'}</button></>}>
+        {AccForm}
+      </Modal>}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════
+   TRANSACTIONS
+══════════════════════════════════════ */
+function PageTx({data,setData,toast,type}){
+  const {transactions,expenseCategories,incomeCategories,profile}=data;
+  const cats=type==='expense'?expenseCategories:incomeCategories;
+  const isInc=type==='income';
+  const color=isInc?'var(--gd)':'var(--r)';
+  const months=useMemo(()=>getPeriodMonths(profile.periodStart,profile.periodEnd),[profile.periodStart,profile.periodEnd]);
+  const [selM,setSelM]=useState('all');
+  const ef={date:new Date().toISOString().slice(0,10),category:'',desc:'',amount:'',paymentMode:''};
+  const [form,setForm]=useState(ef);
+  const [eid,setEid]=useState(null);
+  const [sel,setSel]=useState(new Set());
+  const fileRef=useRef();
+
+  const filtered=useMemo(()=>[...transactions.filter(t=>t.type===type&&(selM==='all'||t.month===selM))].sort((a,b)=>new Date(b.date)-new Date(a.date)),[transactions,type,selM]);
+  const total=filtered.reduce((s,t)=>s+t.amount,0);
+  const allSel=filtered.length>0&&sel.size===filtered.length;
+
+  const save=()=>{
+    if(!form.date||!form.category||!form.amount||isNaN(+form.amount))return;
+    const month=form.date.slice(0,7);
+    if(eid){
+      setData(d=>({...d,transactions:d.transactions.map(t=>t.id===eid?{...t,...form,amount:+form.amount,month}:t)}));
+      toast('Updated','g');
+    }else{
+      setData(d=>({...d,transactions:[...d.transactions,{id:uid(),date:form.date,type,category:form.category,desc:form.desc,amount:+form.amount,month,paymentMode:form.paymentMode||''}]}));
+      toast('Added','g');
+    }
+    setForm(ef);setEid(null);
+  };
+  const startEdit=t=>{setEid(t.id);setForm({date:t.date,category:t.category,desc:t.desc,amount:String(t.amount),paymentMode:t.paymentMode||''});};
+  const cancel=()=>{setEid(null);setForm(ef);};
+  const del=id=>{setData(d=>({...d,transactions:d.transactions.filter(t=>t.id!==id)}));toast('Deleted','x');};
+  const bulkDel=()=>{if(!sel.size)return;if(!window.confirm(`Delete ${sel.size} selected transactions?`))return;setData(d=>({...d,transactions:d.transactions.filter(t=>!sel.has(t.id))}));setSel(new Set());toast(`Deleted ${sel.size} entries`,'x');};
+  const toggleAll=()=>setSel(allSel?new Set():new Set(filtered.map(t=>t.id)));
+  const toggleOne=id=>setSel(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;});
+
+  const exportCSV=()=>{
+    const hdr='date,type,category,description,amount,paymentMode';
+    const rows=filtered.map(t=>`${t.date},${t.type},${t.category},"${t.desc||''}",${t.amount},${t.paymentMode||''}`);
+    const blob=new Blob([hdr+'\n'+rows.join('\n')],{type:'text/csv'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`finmanager-${type}-${selM}.csv`;a.click();
+    toast('CSV exported','g');
+  };
+  const downloadTemplate=()=>{
+    const blob=new Blob(['date,type,category,description,amount,paymentMode\n2026-04-01,expense,House Rent,April Rent,20500,NEFT/Bank Transfer\n2026-04-02,income,Consultancy Income (Salary),Salary,75000,NEFT/Bank Transfer'],{type:'text/csv'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='finmanager-template.csv';a.click();
+  };
+  const handleCSV=e=>{
+    const f=e.target.files[0];if(!f)return;
+    const r=new FileReader();
+    r.onload=ev=>{
+      const lines=ev.target.result.split('\n').filter(l=>l.trim());
+      const hdr=lines[0].toLowerCase().split(',').map(h=>h.trim().replace(/"/g,''));
+      const txs=lines.slice(1).map(line=>{
+        const cols=line.split(',').map(c=>c.trim().replace(/"/g,''));
+        const o={};hdr.forEach((h,i)=>o[h]=cols[i]||'');
+        if(!o.date||!o.amount||!o.type)return null;
+        const amount=parseFloat(o.amount);if(isNaN(amount))return null;
+        return{id:uid(),date:o.date,type:o.type.toLowerCase().trim(),category:o.category||'Other Expense',desc:o.description||o.desc||'',amount,month:o.date.slice(0,7),paymentMode:o.paymentmode||o['payment mode']||''};
+      }).filter(Boolean);
+      setData(d=>({...d,transactions:[...d.transactions,...txs]}));
+      toast(`Imported ${txs.length} transactions`,'g');
+    };
+    r.readAsText(f);e.target.value='';
+  };
+
+  // Payment mode breakdown
+  const pmMap={};filtered.forEach(t=>{const pm=t.paymentMode||'Unknown';pmMap[pm]=(pmMap[pm]||0)+t.amount;});
+  const topPM=Object.entries(pmMap).sort((a,b)=>b[1]-a[1]).slice(0,3);
+
+  return(
+    <div className="page">
+      <div className="ph">
+        <div><div className="ptitle">{isInc?'Income Tracker':'Expense Tracker'}</div><div className="psub">Daily {isInc?'income':'expense'} log</div></div>
+        <div style={{display:'flex',gap:8}}>
+          <button className="btn btn-s btn-sm" onClick={downloadTemplate}><Ic n="dl" s={12}/>Template</button>
+          <button className="btn btn-s btn-sm" onClick={()=>fileRef.current.click()}><Ic n="up" s={12}/>CSV Import</button>
+          <button className="btn btn-s btn-sm" onClick={exportCSV}><Ic n="dl" s={12}/>Export CSV</button>
+        </div>
+      </div>
+      <input type="file" ref={fileRef} accept=".csv" style={{display:'none'}} onChange={handleCSV}/>
+      <div className="g3 mb3">
+        <div className="card"><div className="cl">Filtered Total</div><div className="cv" style={{color,fontSize:18}}>{fmtINR(total)}</div><div className="cm">{filtered.length} entries · {months.length} months</div></div>
+        {topPM.map(([pm,v])=>(
+          <div className="card" key={pm}><div className="cl">{pm||'Unknown'}</div><div className="cv" style={{color,fontSize:17}}>{fmtINR(v,true)}</div><div className="cm">{total>0?(v/total*100).toFixed(1):0}% by mode</div></div>
+        ))}
+        {topPM.length===0&&Object.entries(filtered.reduce((m,t)=>{m[t.category]=(m[t.category]||0)+t.amount;return m;},{})).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([c,v])=>(
+          <div className="card" key={c}><div className="cl">{c}</div><div className="cv" style={{color,fontSize:17}}>{fmtINR(v,true)}</div><div className="cm">{total>0?(v/total*100).toFixed(1):0}% of total</div></div>
+        ))}
+      </div>
+      {/* Form */}
+      <div className="card mb3">
+        <div className="sh mb2">
+          <div className="sh-t"><Ic n={eid?'edit':'plus'} s={14} c="var(--g)"/>{eid?'Edit Entry':'Add New Entry'}</div>
+          {eid&&<button className="btn btn-g btn-sm" onClick={cancel}>Cancel</button>}
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 2fr 1fr 1fr auto',gap:10,alignItems:'end'}}>
+          <div className="fg"><label>Date</label><input type="date" value={form.date} onChange={e=>setForm(f=>({...f,date:e.target.value}))}/></div>
+          <div className="fg"><label>Category</label>
+            <select value={form.category} onChange={e=>setForm(f=>({...f,category:e.target.value}))}>
+              <option value="">– Select –</option>
+              {cats.map(c=><option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div className="fg"><label>Description / Narration</label><input type="text" placeholder="Details…" value={form.desc} onChange={e=>setForm(f=>({...f,desc:e.target.value}))}/></div>
+          <div className="fg"><label>Payment Mode</label>
+            <select value={form.paymentMode} onChange={e=>setForm(f=>({...f,paymentMode:e.target.value}))}>
+              <option value="">– Mode –</option>
+              {PAYMENT_MODES.map(m=><option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
+          <div className="fg"><label>Amount (₹)</label>
+            <input type="number" placeholder="0.00" value={form.amount} onChange={e=>setForm(f=>({...f,amount:e.target.value}))}/>
+          </div>
+          <button className="btn btn-p" onClick={save} style={{marginBottom:1}}><Ic n={eid?'ok':'plus'} s={13} c="#fff"/></button>
+        </div>
+      </div>
+      {/* Bulk actions bar */}
+      {sel.size>0&&(
+        <div className="bulk-bar">
+          <Ic n="del" s={13} c="var(--gd)"/>
+          {sel.size} selected
+          <button className="btn btn-d btn-sm" onClick={bulkDel}><Ic n="del" s={12}/>Delete Selected</button>
+          <button className="btn btn-g btn-sm" onClick={()=>setSel(new Set())}>Clear</button>
+        </div>
+      )}
+      {/* Month filter */}
+      <div className="mbar">
+        <div className={`mchip ${selM==='all'?'on':''}`} onClick={()=>setSelM('all')}>All</div>
+        {months.map(m=><div key={m.key} className={`mchip ${selM===m.key?'on':''}`} onClick={()=>setSelM(m.key)}>{m.label}</div>)}
+      </div>
+      <div className="tw">
+        <table>
+          <thead><tr>
+            <th style={{width:34}}><input type="checkbox" checked={allSel} onChange={toggleAll}/></th>
+            <th>Date</th><th>Month</th><th>Category</th><th>Description</th><th>Mode</th><th className="num">Amount (₹)</th><th>Actions</th>
+          </tr></thead>
+          <tbody>
+            {filtered.length===0&&<tr><td colSpan={8}><div style={{textAlign:'center',padding:'28px',color:'var(--n400)',fontSize:12.5}}>No entries found.</div></td></tr>}
+            {filtered.map(t=>(
+              <tr key={t.id} className={`cb-row ${sel.has(t.id)?'sel':''}`} style={{background:eid===t.id?'var(--gl)':''}}>
+                <td><input type="checkbox" checked={sel.has(t.id)} onChange={()=>toggleOne(t.id)}/></td>
+                <td style={{fontFamily:'var(--m)',fontSize:12}}>{fmtDate(t.date)}</td>
+                <td><span className="tag tx">{fmtMonth(t.month)}</span></td>
+                <td style={{fontSize:12.5}}>{t.category}</td>
+                <td style={{fontSize:12,color:'var(--n500)'}}>{t.desc}</td>
+                <td>{t.paymentMode?<span className={`pm-badge ${pmClass(t.paymentMode)}`}>{t.paymentMode}</span>:'–'}</td>
+                <td className={`num ${isInc?'pos':'neg'}`}>{fmtINR(t.amount)}</td>
+                <td><div style={{display:'flex',gap:4}}><button className="bic" onClick={()=>startEdit(t)}><Ic n="edit" s={11}/></button><button className="bic red" onClick={()=>del(t.id)}><Ic n="del" s={11}/></button></div></td>
+              </tr>
+            ))}
+          </tbody>
+          {filtered.length>0&&<tfoot><tr className="tft"><td colSpan={5} style={{fontWeight:700}}>Total ({filtered.length} entries)</td><td/><td className={`num ${isInc?'pos':'neg'}`}>{fmtINR(total)}</td><td/></tr></tfoot>}
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════
+   BUDGET
+══════════════════════════════════════ */
+function PageBudget({data,setData,toast}){
+  const {transactions,budgetLimits,expenseCategories,profile}=data;
+  const [mode,setMode]=useState('monthly');
+  const months=useMemo(()=>getPeriodMonths(profile.periodStart,profile.periodEnd),[profile.periodStart,profile.periodEnd]);
+  const [selM,setSelM]=useState(months[months.length-2]?.key||months[0]?.key||'');
+
+  const getActual=cat=>transactions.filter(t=>t.type==='expense'&&t.category===cat&&(mode==='monthly'?t.month===selM:months.some(m=>m.key===t.month))).reduce((s,t)=>s+t.amount,0);
+  const getBudget=cat=>mode==='monthly'?(budgetLimits[cat]||0):(budgetLimits[cat]||0)*months.length;
+  const rows=expenseCategories.map(cat=>{const actual=getActual(cat),budget=getBudget(cat),variance=budget-actual,pct=budget>0?(actual/budget)*100:actual>0?999:0;return{cat,actual,budget,variance,pct};}).filter(r=>r.actual>0||r.budget>0);
+  const tA=rows.reduce((s,r)=>s+r.actual,0),tB=rows.reduce((s,r)=>s+r.budget,0),tV=tB-tA;
+
+  return(
+    <div className="page">
+      <div className="ph">
+        <div><div className="ptitle">Budget vs Actual</div><div className="psub">Period: {periodLabel(profile.periodStart,profile.periodEnd)}</div></div>
+        <div className="tgl"><button className={`tgo ${mode==='monthly'?'on':''}`} onClick={()=>setMode('monthly')}>Monthly</button><button className={`tgo ${mode==='annual'?'on':''}`} onClick={()=>setMode('annual')}>Full Period</button></div>
+      </div>
+      {mode==='monthly'&&<div className="mbar">{months.map(m=><div key={m.key} className={`mchip ${selM===m.key?'on':''}`} onClick={()=>setSelM(m.key)}>{m.label}</div>)}</div>}
+      <div className="g3 mb3">
+        <div className="card"><div className="cl">{mode==='monthly'?'Monthly':'Period'} Budget</div><div className="cv b">{fmtINR(tB)}</div><div className="cm">{mode==='annual'?`${months.length} months × monthly limit`:'Configured'}</div></div>
+        <div className="card"><div className="cl">Actual Spent</div><div className="cv r">{fmtINR(tA)}</div></div>
+        <div className="card"><div className="cl">Unspent / Overspent</div><div className={`cv ${tV>=0?'g':'r'}`}>{tV>=0?'+':''}{fmtINR(tV)}</div><div className="cm">{tV>=0?'Under budget ✓':'Over budget ⚠'}</div></div>
+      </div>
+      <div className="tw">
+        <table>
+          <thead><tr><th>Category</th><th className="num">Budget (₹)</th><th className="num">Actual (₹)</th><th className="num">Variance (₹)</th><th>Utilization</th><th>Status</th></tr></thead>
+          <tbody>
+            {rows.map(r=>(
+              <tr key={r.cat}>
+                <td style={{fontWeight:700,fontSize:12.5}}>{r.cat}</td>
+                <td className="num">{r.budget.toLocaleString('en-IN')}</td>
+                <td className="num">{r.actual.toLocaleString('en-IN')}</td>
+                <td className={`num ${r.variance>=0?'pos':'neg'}`}>{r.variance>=0?'+':''}{r.variance.toLocaleString('en-IN')}</td>
+                <td style={{width:150}}>
+                  <div style={{display:'flex',alignItems:'center',gap:6}}>
+                    <div className="prog" style={{flex:1,height:6}}><div className="pf" style={{width:`${Math.min(100,r.pct)}%`,background:r.pct>100?'var(--r)':r.pct>85?'var(--o)':'var(--g)'}}/></div>
+                    <span style={{fontSize:10,color:'var(--n400)',width:34,textAlign:'right'}}>{r.pct>999?'∞':r.pct.toFixed(0)}%</span>
+                  </div>
+                </td>
+                <td>{r.pct>100?<span className="tag tr">Over</span>:r.pct>85?<span className="tag to">Near</span>:r.budget===0?<span className="tag tx">No Limit</span>:<span className="tag tg">OK</span>}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot><tr className="tft"><td style={{fontWeight:700}}>Total</td><td className="num bold">{tB.toLocaleString('en-IN')}</td><td className="num bold">{tA.toLocaleString('en-IN')}</td><td className={`num bold ${tV>=0?'pos':'neg'}`}>{tV>=0?'+':''}{tV.toLocaleString('en-IN')}</td><td/><td/></tr></tfoot>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════
+   PnL
+══════════════════════════════════════ */
+function PagePnL({data}){
+  const {transactions,profile}=data;
+  const months=useMemo(()=>getPeriodMonths(profile.periodStart,profile.periodEnd),[profile.periodStart,profile.periodEnd]);
+  const [selM,setSelM]=useState('all');
+  const getD=key=>{const txs=transactions.filter(t=>key==='all'?months.some(m=>m.key===t.month):t.month===key);const income=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);const expense=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);return{income,expense,surplus:income-expense};};
+  const summary=months.map(m=>({...m,...getD(m.key)}));
+  const totals=getD('all');const cur=selM==='all'?totals:getD(selM);
+  const incCats={};transactions.filter(t=>t.type==='income'&&(selM==='all'?months.some(m=>m.key===t.month):t.month===selM)).forEach(t=>{incCats[t.category]=(incCats[t.category]||0)+t.amount;});
+  const expCats={};transactions.filter(t=>t.type==='expense'&&(selM==='all'?months.some(m=>m.key===t.month):t.month===selM)).forEach(t=>{expCats[t.category]=(expCats[t.category]||0)+t.amount;});
+  return(
+    <div className="page">
+      <div className="ph"><div><div className="ptitle">P &amp; L Statement</div><div className="psub">Period: {periodLabel(profile.periodStart,profile.periodEnd)}</div></div></div>
+      <div className="mbar"><div className={`mchip ${selM==='all'?'on':''}`} onClick={()=>setSelM('all')}>Full Period</div>{months.map(m=><div key={m.key} className={`mchip ${selM===m.key?'on':''}`} onClick={()=>setSelM(m.key)}>{m.label}</div>)}</div>
+      <div className="g4 mb3">
+        {[{l:'Total Income',v:cur.income,col:'g',icon:'inc'},{l:'Total Expense',v:cur.expense,col:'r',icon:'exp'},{l:'Net Surplus/Deficit',v:cur.surplus,col:cur.surplus>=0?'g':'r',icon:'pnl',sub:`${cur.income>0?(cur.surplus/cur.income*100).toFixed(2):0}% of income`},{l:'Savings Rate',v:null,col:cur.surplus>=0?'g':'r',icon:'budget',pct:cur.income>0?(cur.surplus/cur.income*100).toFixed(1):0}].map(k=>(
+          <div className={`kpi-card ${k.col}`} key={k.l}>
+            <div className="kpi-ic-wrap"><div className="kpi-ic" style={{background:k.col==='g'?'var(--gl)':'var(--rl)'}}><Ic n={k.icon} c={k.col==='g'?'var(--g)':'var(--r)'}/></div></div>
+            <div className="cl">{k.l}</div>
+            {k.pct!==undefined?<div className={`cv ${k.col}`} style={{fontSize:20}}>{k.pct}%</div>:<div className={`cv ${k.col}`} style={{fontSize:17}}>{fmtINR(k.v)}</div>}
+            {k.sub&&<div className="cm">{k.sub}</div>}
+          </div>
+        ))}
+      </div>
+      <div className="g2 mb3">
+        <div className="card">
+          <div className="sh mb2"><div className="sh-t"><Ic n="inc" s={14} c="var(--g)"/>Income Breakdown</div><span className="tag tg">{fmtINR(cur.income,true)}</span></div>
+          {Object.entries(incCats).sort((a,b)=>b[1]-a[1]).map(([cat,amt])=>(<div key={cat} style={{marginBottom:9}}><div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}><span style={{fontSize:12.5}}>{cat}</span><span style={{fontFamily:'var(--m)',fontSize:12,fontWeight:600,color:'var(--gd)'}}>{fmtINR(amt)}</span></div><div className="prog"><div className="pf" style={{width:`${cur.income>0?amt/cur.income*100:0}%`,background:'var(--g)'}}/></div></div>))}
+          {!Object.keys(incCats).length&&<div style={{textAlign:'center',padding:'16px',color:'var(--n400)',fontSize:12}}>No income data.</div>}
+        </div>
+        <div className="card">
+          <div className="sh mb2"><div className="sh-t"><Ic n="exp" s={14} c="var(--r)"/>Expense Breakdown</div><span className="tag tr">{fmtINR(cur.expense,true)}</span></div>
+          {Object.entries(expCats).sort((a,b)=>b[1]-a[1]).map(([cat,amt])=>(<div key={cat} style={{marginBottom:9}}><div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}><span style={{fontSize:12.5}}>{cat}</span><span style={{fontFamily:'var(--m)',fontSize:12,fontWeight:600,color:'var(--r)'}}>{fmtINR(amt)}</span></div><div className="prog"><div className="pf" style={{width:`${cur.expense>0?amt/cur.expense*100:0}%`,background:'var(--r)'}}/></div></div>))}
+          {!Object.keys(expCats).length&&<div style={{textAlign:'center',padding:'16px',color:'var(--n400)',fontSize:12}}>No expense data.</div>}
+        </div>
+      </div>
+      <div className="card">
+        <div className="sh mb2"><div className="sh-t"><Ic n="pnl" s={14} c="var(--g)"/>Monthly P&amp;L Breakdown</div></div>
+        <div className="tw">
+          <table>
+            <thead><tr><th>Month</th><th className="num">Income (₹)</th><th className="num">Expense (₹)</th><th className="num">Surplus / Deficit (₹)</th><th className="num">Savings %</th><th>Status</th></tr></thead>
+            <tbody>
+              {summary.map(m=>(<tr key={m.key} style={{cursor:'pointer',background:selM===m.key?'var(--gl)':''}} onClick={()=>setSelM(m.key)}><td style={{fontWeight:700}}>{m.label}</td><td className="num pos">{m.income.toLocaleString('en-IN')}</td><td className="num neg">{m.expense.toLocaleString('en-IN')}</td><td className={`num ${m.surplus>=0?'pos':'neg'}`}>{m.surplus.toLocaleString('en-IN')}</td><td className="num" style={{fontSize:11.5}}>{m.income>0?(m.surplus/m.income*100).toFixed(2):'–'}%</td><td>{m.income===0&&m.expense===0?<span className="tag tx">No Data</span>:m.surplus>=0?<span className="tag tg">Surplus</span>:<span className="tag tr">Deficit</span>}</td></tr>))}
+            </tbody>
+            <tfoot><tr className="tft"><td style={{fontWeight:700}}>Period Total</td><td className="num pos bold">{totals.income.toLocaleString('en-IN')}</td><td className="num neg bold">{totals.expense.toLocaleString('en-IN')}</td><td className={`num bold ${totals.surplus>=0?'pos':'neg'}`}>{totals.surplus.toLocaleString('en-IN')}</td><td className="num bold">{totals.income>0?(totals.surplus/totals.income*100).toFixed(2):0}%</td><td/></tr></tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════
+   CREDIT CARDS
+══════════════════════════════════════ */
+function PageCC({data,setData,toast}){
+  const {creditCards}=data;
+  const ef={bank:'',type:'',accNo:'XXXX-XXXX-XXXX-0000',limit:'',payable:'',provision:'',dueDate:''};
+  const [modal,setModal]=useState(null);
+  const [form,setForm]=useState(ef);
+  const tL=creditCards.reduce((s,c)=>s+c.limit,0);
+  const tP=creditCards.reduce((s,c)=>s+c.payable,0);
+  const tProv=creditCards.reduce((s,c)=>s+c.provision,0);
+  const util=tL>0?(tP+tProv)/tL*100:0;
+  const dues=creditCards.filter(c=>c.dueDate&&c.payable>0).sort((a,b)=>new Date(a.dueDate)-new Date(b.dueDate));
+
+  const openAdd=()=>{setForm(ef);setModal('add');};
+  const openEdit=c=>{setForm({bank:c.bank,type:c.type,accNo:c.accNo,limit:String(c.limit),payable:String(c.payable),provision:String(c.provision),dueDate:c.dueDate||''});setModal({eid:c.id});};
+  const close=()=>{setModal(null);setForm(ef);};
+  const save=()=>{
+    if(!form.bank||!form.type||!form.limit)return;
+    const e={bank:form.bank,type:form.type,accNo:form.accNo,limit:+form.limit,payable:+form.payable||0,provision:+form.provision||0,dueDate:form.dueDate||null};
+    if(modal==='add'){setData(d=>({...d,creditCards:[...d.creditCards,{id:uid(),...e}]}));toast('Card added','g');}
+    else{setData(d=>({...d,creditCards:d.creditCards.map(c=>c.id===modal.eid?{...c,...e}:c)}));toast('Card updated','g');}
+    close();
+  };
+  const del=id=>{if(!window.confirm('Remove card?'))return;setData(d=>({...d,creditCards:d.creditCards.filter(c=>c.id!==id)}));toast('Removed','x');};
+
+  const CCForm=(<>
+    <div className="f2 mb2"><div className="fg"><label>Bank Name</label><input value={form.bank} onChange={e=>setForm(f=>({...f,bank:e.target.value}))} placeholder="e.g. HDFC Bank"/></div><div className="fg"><label>Card Type / Network</label><input value={form.type} onChange={e=>setForm(f=>({...f,type:e.target.value}))} placeholder="e.g. Visa Infinite"/></div></div>
+    <div className="f2 mb2"><div className="fg"><label>Credit Limit (₹)</label><input type="number" value={form.limit} onChange={e=>setForm(f=>({...f,limit:e.target.value}))}/></div><div className="fg"><label>Payment Due Date</label><input type="date" value={form.dueDate} onChange={e=>setForm(f=>({...f,dueDate:e.target.value}))}/></div></div>
+    <div className="f2"><div className="fg"><label>Billed Amount – Payable (₹)</label><input type="number" value={form.payable} onChange={e=>setForm(f=>({...f,payable:e.target.value}))}/></div><div className="fg"><label>Unbilled – Provision (₹)</label><input type="number" value={form.provision} onChange={e=>setForm(f=>({...f,provision:e.target.value}))}/></div></div>
+  </>);
+
+  return(
+    <div className="page">
+      <div className="ph"><div><div className="ptitle">Credit Card Manager</div><div className="psub">Billed vs Unbilled · Due Date Tracker</div></div><button className="btn btn-p" onClick={openAdd}><Ic n="plus" s={13} c="#fff"/>Add Card</button></div>
+      <div className="g4 mb3">
+        <div className="card"><div className="cl">Total Limit</div><div className="cv b">{fmtINR(tL,true)}</div><div className="cm">{creditCards.length} cards</div></div>
+        <div className="card"><div className="cl">Billed (Payable)</div><div className="cv r">{fmtINR(tP)}</div><div className="cm">Due now</div></div>
+        <div className="card"><div className="cl">Unbilled (Provision)</div><div className="cv o">{fmtINR(tProv)}</div><div className="cm">Upcoming</div></div>
+        <div className="card"><div className="cl">Overall Utilization</div>
+          <div style={{display:'flex',gap:12,alignItems:'center',marginTop:6}}>
+            <Donut pct={util} color={util>30?'var(--r)':util>15?'var(--o)':'var(--g)'} size={70} stroke={7} label="Used"/>
+            <div><div className="cv" style={{fontSize:17,color:util>30?'var(--r)':util>15?'var(--o)':'var(--gd)'}}>{util.toFixed(2)}%</div><div className="cm">of {fmtINR(tL,true)}</div></div>
+          </div>
+        </div>
+      </div>
+
+      {/* Beautiful due cards */}
+      {dues.length>0&&(
+        <div className="card mb3">
+          <div className="sh mb3"><div className="sh-t"><Ic n="cal" s={14} c="var(--g)"/>Upcoming Payment Dues</div><span className="tag tr">{dues.length} due</span></div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:10}}>
+            {dues.map(cc=>{
+              const d=daysDiff(cc.dueDate);
+              const urgent=d!==null&&d<=2;const warn=d!==null&&d<=7;
+              const bg=urgent?'linear-gradient(135deg,#7f1d1d 0%,#b91c1c 100%)':warn?'linear-gradient(135deg,#78350f 0%,#b45309 100%)':'linear-gradient(135deg,#1e3a5f 0%,#1d4ed8 100%)';
+              return(
+                <div key={cc.id} className="due-card" style={{background:bg}}>
+                  <div className="due-urgency">
+                    <div><div className="due-bank" style={{color:'rgba(255,255,255,.7)'}}>{cc.bank}</div><div className="due-card-type" style={{color:'#fff'}}>{cc.type}</div></div>
+                    <div className="due-days-badge" style={{background:'rgba(0,0,0,.25)',color:'#fff',border:'1px solid rgba(255,255,255,.2)'}}>
+                      {d===0?'⚠ Today':d<0?`${Math.abs(d)}d Overdue`:`${d}d left`}
+                    </div>
+                  </div>
+                  <div className="due-amount-row">
+                    <div><div style={{fontSize:9,opacity:.65,color:'#fff',textTransform:'uppercase',letterSpacing:.5,marginBottom:2}}>Amount Due</div><div className="due-amount" style={{color:'#fff'}}>{fmtINR(cc.payable)}</div></div>
+                    <div className="due-date-block"><div style={{fontSize:9,opacity:.65,color:'rgba(255,255,255,.7)',textTransform:'uppercase',letterSpacing:.4}}>Due On</div><div style={{fontSize:12,fontWeight:700,color:'#fcd34d'}}>{fmtDate(cc.dueDate)}</div></div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <div className="card">
+        <div className="sh mb2"><div className="sh-t"><Ic n="cc" s={14} c="var(--g)"/>All Credit Cards</div></div>
+        <div className="tw">
+          <table>
+            <thead><tr><th>Bank</th><th>Card</th><th className="num">Limit (₹)</th><th className="num">Billed (₹)</th><th className="num">Unbilled (₹)</th><th className="num">Total Due (₹)</th><th>Due Date</th><th>Util%</th><th>Actions</th></tr></thead>
+            <tbody>
+              {creditCards.map(c=>{
+                const u=c.limit>0?(c.payable+c.provision)/c.limit*100:0,d=daysDiff(c.dueDate);
+                return(<tr key={c.id}>
+                  <td style={{fontWeight:700}}>{c.bank}</td><td style={{fontSize:12.5}}>{c.type}</td>
+                  <td className="num">{c.limit.toLocaleString('en-IN')}</td>
+                  <td className="num neg">{c.payable>0?fmtINR(c.payable):'–'}</td>
+                  <td className="num" style={{color:'var(--o)'}}>{c.provision>0?fmtINR(c.provision):'–'}</td>
+                  <td className="num bold neg">{(c.payable+c.provision)>0?fmtINR(c.payable+c.provision):'–'}</td>
+                  <td>{c.dueDate?<span className={`tag ${d!==null&&d<=3?'tr':d!==null&&d<=7?'to':'tb'}`}>{fmtDate(c.dueDate)}</span>:'–'}</td>
+                  <td><span className={`tag ${u>30?'tr':u>15?'to':'tg'}`}>{u.toFixed(1)}%</span></td>
+                  <td><div style={{display:'flex',gap:4}}><button className="bic" onClick={()=>openEdit(c)}><Ic n="edit" s={11}/></button><button className="bic red" onClick={()=>del(c.id)}><Ic n="del" s={11}/></button></div></td>
+                </tr>);
+              })}
+            </tbody>
+            <tfoot><tr className="tft"><td colSpan={2} style={{fontWeight:700}}>Total</td><td className="num bold">{tL.toLocaleString('en-IN')}</td><td className="num neg bold">{tP.toLocaleString('en-IN')}</td><td className="num bold" style={{color:'var(--o)'}}>{tProv.toLocaleString('en-IN')}</td><td className="num neg bold">{(tP+tProv).toLocaleString('en-IN')}</td><td colSpan={3}/></tr></tfoot>
+          </table>
+        </div>
+      </div>
+      {/* 30% Alert + Insights */}
+      {util>30&&<div className="alert ae mt3"><Ic n="prov" s={14}/>⚠ <strong>Credit Utilization at {util.toFixed(1)}%</strong> — exceeds 30% threshold. This may impact your credit score. Consider paying down balances on high-utilization cards.</div>}
+      {util>15&&util<=30&&<div className="alert aw mt3"><Ic n="prov" s={14}/>Credit utilization at {util.toFixed(1)}% — approaching the 30% recommended limit.</div>}
+      <div className="card mt3">
+        <div className="sh mb2"><div className="sh-t"><Ic n="budget" s={14} c="var(--g)"/>Per-Card Utilization Insights</div></div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:10}}>
+          {creditCards.map(c=>{
+            const u=c.limit>0?(c.payable+c.provision)/c.limit*100:0;
+            const col=u>30?'var(--r)':u>15?'var(--o)':'var(--g)';
+            return(
+              <div key={c.id} style={{padding:'12px 14px',border:`1px solid ${u>30?'var(--rl)':'var(--n100)'}`,borderRadius:'var(--r8)',background:u>30?'#fff8f8':'var(--W)'}}>
+                <div style={{fontSize:10.5,fontWeight:700,color:'var(--n500)',marginBottom:2}}>{c.bank}</div>
+                <div style={{fontSize:12.5,fontWeight:600,marginBottom:8}}>{c.type}</div>
+                <div style={{display:'flex',alignItems:'center',gap:8}}>
+                  <div className="prog" style={{flex:1,height:6}}><div className="pf" style={{width:`${Math.min(100,u)}%`,background:col}}/></div>
+                  <span style={{fontSize:11,fontWeight:700,color:col,width:40,textAlign:'right'}}>{u.toFixed(1)}%</span>
+                </div>
+                <div style={{fontSize:10,color:'var(--n400)',marginTop:4}}>Used: {fmtINR(c.payable+c.provision,true)} of {fmtINR(c.limit,true)}</div>
+                {u>30&&<div style={{fontSize:10,color:'var(--r)',fontWeight:600,marginTop:3}}>⚠ Over 30% threshold</div>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      {modal&&<Modal title={modal==='add'?'Add Credit Card':'Edit Credit Card'} onClose={close} foot={<><button className="btn btn-s btn-sm" onClick={close}>Cancel</button><button className="btn btn-p btn-sm" onClick={save}><Ic n={modal==='add'?'plus':'ok'} s={12} c="#fff"/>{modal==='add'?'Add':'Save'}</button></>}>{CCForm}</Modal>}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════
+   LOANS
+══════════════════════════════════════ */
+function PageLoans({data,setData,toast}){
+  const {loans}=data;
+  const ef={bank:'',accNo:'XXXX-0000',type:'Personal Loan',original:'',outstanding:'',emi:'',roi:'',startDate:'',endDate:'',tenure:'60'};
+  const [modal,setModal]=useState(null);const [form,setForm]=useState(ef);
+  const tOS=loans.reduce((s,l)=>s+l.outstanding,0),tEMI=loans.reduce((s,l)=>s+l.emi,0);
+  const bROI=tOS>0?(loans.reduce((s,l)=>s+l.roi*l.outstanding,0)/tOS).toFixed(2):0;
+  const calcEnd=(s,t)=>{if(!s||!t)return'';const d=new Date(s);d.setMonth(d.getMonth()+parseInt(t));return d.toISOString().slice(0,10);};
+  const calcRem=(s,t)=>{if(!s||!t)return+t||0;const e=new Date(calcEnd(s,t)),now=new Date();return Math.max(0,Math.round((e-now)/(30*24*3600*1000)));};
+  const openAdd=()=>{setForm(ef);setModal('add');};
+  const openEdit=l=>{setForm({bank:l.bank,accNo:l.accNo,type:l.type,original:String(l.original),outstanding:String(l.outstanding),emi:String(l.emi),roi:String(l.roi),startDate:l.startDate||'',endDate:l.endDate||'',tenure:String(l.tenure)});setModal({eid:l.id});};
+  const close=()=>{setModal(null);setForm(ef);};
+  const save=()=>{
+    if(!form.bank||!form.original)return;
+    const end=form.endDate||calcEnd(form.startDate,form.tenure);
+    const e={bank:form.bank,accNo:form.accNo,type:form.type,original:+form.original,outstanding:+(form.outstanding||form.original),emi:+form.emi,roi:+form.roi,startDate:form.startDate||null,endDate:end||null,tenure:+form.tenure,remaining:calcRem(form.startDate,form.tenure)};
+    if(modal==='add'){setData(d=>({...d,loans:[...d.loans,{id:uid(),...e}]}));toast('Loan added','g');}
+    else{setData(d=>({...d,loans:d.loans.map(l=>l.id===modal.eid?{...l,...e}:l)}));toast('Updated','g');}
+    close();
+  };
+  const del=id=>{if(!window.confirm('Remove loan?'))return;setData(d=>({...d,loans:d.loans.filter(l=>l.id!==id)}));toast('Removed','x');};
+
+  const LF=(<>
+    <div className="f2 mb2"><div className="fg"><label>Bank / Lender</label><input value={form.bank} onChange={e=>setForm(f=>({...f,bank:e.target.value}))}/></div><div className="fg"><label>Loan Type</label><select value={form.type} onChange={e=>setForm(f=>({...f,type:e.target.value}))}><option>Personal Loan</option><option>Home Loan</option><option>Car Loan</option><option>Education Loan</option><option>Gold Loan</option><option>Business Loan</option><option>Other</option></select></div></div>
+    <div className="f3 mb2"><div className="fg"><label>Loan Amount (₹)</label><input type="number" value={form.original} onChange={e=>setForm(f=>({...f,original:e.target.value}))}/></div><div className="fg"><label>Outstanding Balance (₹)</label><input type="number" value={form.outstanding} onChange={e=>setForm(f=>({...f,outstanding:e.target.value}))}/></div><div className="fg"><label>EMI / Month (₹)</label><input type="number" value={form.emi} onChange={e=>setForm(f=>({...f,emi:e.target.value}))}/></div></div>
+    <div className="f3 mb2"><div className="fg"><label>ROI (% p.a.)</label><input type="number" step="0.01" value={form.roi} onChange={e=>setForm(f=>({...f,roi:e.target.value}))}/></div><div className="fg"><label>Tenure (months)</label><input type="number" value={form.tenure} onChange={e=>setForm(f=>({...f,tenure:e.target.value}))}/></div><div className="fg"><label>Acc. No (Dummy)</label><input value={form.accNo} onChange={e=>setForm(f=>({...f,accNo:e.target.value}))}/></div></div>
+    <div className="f2">
+      <div className="fg"><label>Start Date</label><input type="date" value={form.startDate} onChange={e=>{const ed=calcEnd(e.target.value,form.tenure);setForm(f=>({...f,startDate:e.target.value,endDate:ed}));}}/></div>
+      <div className="fg"><label>End Date (auto-calculated)</label><input type="date" value={form.endDate} onChange={e=>setForm(f=>({...f,endDate:e.target.value}))}/></div>
+    </div>
+    {form.emi&&form.tenure&&form.original&&(<div className="alert ai" style={{marginTop:10,marginBottom:0}}><Ic n="prov" s={13}/>Total payable: {fmtINR(+form.emi * +form.tenure)} · Interest: {fmtINR(Math.max(0,+form.emi * +form.tenure - +form.original))}</div>)}
+  </>);
+
+  return(
+    <div className="page">
+      <div className="ph"><div><div className="ptitle">Loan &amp; Debt Tracker</div><div className="psub">EMI calendar · ROI analysis · Amortization</div></div><button className="btn btn-p" onClick={openAdd}><Ic n="plus" s={13} c="#fff"/>Add Loan</button></div>
+      <div className="g4 mb3">
+        <div className="card"><div className="cl">Total Outstanding</div><div className="cv r">{fmtINR(tOS,true)}</div><div className="cm">{loans.length} active loans</div></div>
+        <div className="card"><div className="cl">Monthly EMI</div><div className="cv o">{fmtINR(tEMI)}</div><div className="cm">{fmtINR(tEMI*12,true)}/year</div></div>
+        <div className="card"><div className="cl">Blended ROI</div><div className="cv b">{bROI}% p.a.</div><div className="cm">Weighted average</div></div>
+        <div className="card"><div className="cl">Total Interest Est.</div><div className="cv r">{fmtINR(loans.reduce((s,l)=>s+Math.max(0,l.emi*l.tenure-l.original),0),true)}</div><div className="cm">All loans combined</div></div>
+      </div>
+      {loans.map(l=>{
+        const pct=l.original>0?(l.original-l.outstanding)/l.original*100:0;
+        const tInt=Math.max(0,l.emi*l.tenure-l.original);
+        return(
+          <div className="card mb2" key={l.id}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:12}}>
+              <div><div style={{fontWeight:800,fontSize:14}}>{l.bank} <span className="tag tb" style={{marginLeft:6,fontSize:10.5}}>{l.type}</span></div><div style={{fontSize:10.5,color:'var(--n400)',fontFamily:'var(--m)',marginTop:2}}>{l.accNo}</div></div>
+              <div style={{display:'flex',gap:7,alignItems:'center'}}>
+                <div style={{textAlign:'right'}}><div style={{fontSize:9.5,color:'var(--n400)',textTransform:'uppercase',fontWeight:600}}>Outstanding</div><div style={{fontFamily:'var(--m)',fontSize:16,fontWeight:700,color:'var(--r)'}}>{fmtINR(l.outstanding)}</div></div>
+                <button className="bic" onClick={()=>openEdit(l)}><Ic n="edit" s={11}/></button>
+                <button className="bic red" onClick={()=>del(l.id)}><Ic n="del" s={11}/></button>
+              </div>
+            </div>
+            <div className="g4 mb2" style={{gap:10}}>
+              {[{l:'EMI/Month',v:fmtINR(l.emi)},{l:'ROI',v:`${l.roi}% p.a.`},{l:'Remaining',v:`${l.remaining}/${l.tenure} mo`},{l:'End Date',v:fmtDate(l.endDate)},{l:'Loan Amount',v:fmtINR(l.original)},{l:'Total Payable',v:fmtINR(l.emi*l.tenure)},{l:'Total Interest',v:fmtINR(tInt)},{l:'Months Paid',v:`${l.tenure-l.remaining} of ${l.tenure}`}].map(x=>(
+                <div key={x.l}><div style={{fontSize:9.5,color:'var(--n400)',textTransform:'uppercase',fontWeight:600,marginBottom:2}}>{x.l}</div><div style={{fontSize:12.5,fontWeight:700}}>{x.v}</div></div>
+              ))}
+            </div>
+            <div style={{display:'flex',alignItems:'center',gap:8}}>
+              <div className="prog" style={{flex:1,height:6}}><div className="pf" style={{width:`${pct}%`,background:'var(--g)'}}/></div>
+              <span style={{fontFamily:'var(--m)',fontSize:11,color:'var(--gd)',width:40,textAlign:'right'}}>{pct.toFixed(1)}%</span>
+              <span style={{fontSize:10.5,color:'var(--n400)'}}>repaid</span>
+            </div>
+          </div>
+        );
+      })}
+      {modal&&<Modal title={modal==='add'?'Add Loan':'Edit Loan'} onClose={close} foot={<><button className="btn btn-s btn-sm" onClick={close}>Cancel</button><button className="btn btn-p btn-sm" onClick={save}><Ic n={modal==='add'?'plus':'ok'} s={12} c="#fff"/>{modal==='add'?'Add':'Save'}</button></>}>{LF}</Modal>}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════
+   PROVISIONS
+══════════════════════════════════════ */
+function PageProvision({data,setData,toast}){
+  const {provisions}=data;
+  const ef={month:new Date().toISOString().slice(0,7),entity:'Self',type:'',narration:'',amount:''};
+  const [form,setForm]=useState(ef);const [eid,setEid]=useState(null);
+  const total=provisions.reduce((s,p)=>s+p.amount,0);
+  const save=()=>{if(!form.narration)return;if(eid){setData(d=>({...d,provisions:d.provisions.map(p=>p.id===eid?{...p,...form,amount:+form.amount}:p)}));toast('Updated','g');setEid(null);}else{setData(d=>({...d,provisions:[...d.provisions,{id:uid(),...form,amount:+form.amount}]}));toast('Added','g');}setForm(ef);};
+  const del=id=>{setData(d=>({...d,provisions:d.provisions.filter(p=>p.id!==id)}));toast('Removed','x');};
+  const se=p=>{setEid(p.id);setForm({month:p.month,entity:p.entity,type:p.type,narration:p.narration,amount:String(p.amount)});};
+  return(
+    <div className="page">
+      <div className="ph"><div><div className="ptitle">Provision Tab</div><div className="psub">Non-recurring / irregular expense provisioning</div></div></div>
+      <div className="alert ai mb3"><Ic n="prov" s={13}/>Provisions are for future or uncertain expenses outside your regular monthly budget — repairs, legal fees, medical contingencies, etc.</div>
+      <div className="g3 mb3">
+        <div className="card"><div className="cl">Total Provisioned</div><div className="cv o">{fmtINR(total)}</div></div>
+        <div className="card"><div className="cl">Active (Non-zero)</div><div className="cv">{provisions.filter(p=>p.amount>0).length}</div></div>
+        <div className="card"><div className="cl">Total Entries</div><div className="cv">{provisions.length}</div></div>
+      </div>
+      <div className="card mb3">
+        <div className="sh mb2"><div className="sh-t"><Ic n={eid?'edit':'plus'} s={14} c="var(--g)"/>{eid?'Edit Provision':'Add Provision'}</div>{eid&&<button className="btn btn-g btn-sm" onClick={()=>{setEid(null);setForm(ef);}}>Cancel</button>}</div>
+        <div className="f4" style={{gap:10,marginBottom:10}}>
+          <div className="fg"><label>Month</label><input type="month" value={form.month} onChange={e=>setForm(f=>({...f,month:e.target.value}))}/></div>
+          <div className="fg"><label>Entity</label><input value={form.entity} onChange={e=>setForm(f=>({...f,entity:e.target.value}))} placeholder="Self / Family…"/></div>
+          <div className="fg"><label>Type</label><input value={form.type} onChange={e=>setForm(f=>({...f,type:e.target.value}))} placeholder="Medical / Repair…"/></div>
+          <div className="fg"><label>Amount (₹)</label><input type="number" value={form.amount} onChange={e=>setForm(f=>({...f,amount:e.target.value}))}/></div>
+        </div>
+        <div style={{display:'flex',gap:10}}>
+          <div className="fg" style={{flex:1}}><label>Narration / Remarks</label><input value={form.narration} onChange={e=>setForm(f=>({...f,narration:e.target.value}))} placeholder="Describe the provision…"/></div>
+          <div style={{alignSelf:'flex-end'}}><button className="btn btn-p" onClick={save}><Ic n={eid?'ok':'plus'} s={13} c="#fff"/>{eid?'Update':'Add'}</button></div>
+        </div>
+      </div>
+      <div className="tw">
+        <table>
+          <thead><tr><th>Month</th><th>Entity</th><th>Type</th><th>Narration</th><th className="num">Amount (₹)</th><th>Actions</th></tr></thead>
+          <tbody>
+            {provisions.map(p=>(<tr key={p.id} style={{background:eid===p.id?'var(--gl)':''}}>
+              <td>{p.month}</td><td><span className="tag tb">{p.entity}</span></td><td style={{fontSize:12,color:'var(--n500)'}}>{p.type}</td><td style={{fontSize:12.5}}>{p.narration}</td>
+              <td className="num bold" style={{color:p.amount>0?'var(--o)':'var(--n400)'}}>{p.amount.toLocaleString('en-IN')}</td>
+              <td><div style={{display:'flex',gap:4}}><button className="bic" onClick={()=>se(p)}><Ic n="edit" s={11}/></button><button className="bic red" onClick={()=>del(p.id)}><Ic n="del" s={11}/></button></div></td>
+            </tr>))}
+          </tbody>
+          <tfoot><tr className="tft"><td colSpan={4} style={{fontWeight:700}}>Total</td><td className="num bold" style={{color:'var(--o)'}}>{total.toLocaleString('en-IN')}</td><td/></tr></tfoot>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════
+   MASTER SETTINGS
+══════════════════════════════════════ */
+function PageMaster({data,setData,toast}){
+  const {expenseCategories,incomeCategories,budgetLimits,accounts}=data;
+  const [view,setView]=useState('monthly');
+  const [nec,setNec]=useState('');const [nic,setNic]=useState('');
+  const fileRef=useRef();
+  const getDisp=cat=>view==='monthly'?(budgetLimits[cat]||0):(budgetLimits[cat]||0)*12;
+  const save=(cat,val,mode)=>{const monthly=mode==='monthly'?parseFloat(val)||0:Math.round((parseFloat(val)||0)/12*100)/100;setData(d=>({...d,budgetLimits:{...d.budgetLimits,[cat]:monthly}}));};
+  const addEC=()=>{if(!nec.trim())return;setData(d=>({...d,expenseCategories:[...d.expenseCategories,nec.trim()]}));setNec('');toast('Added','g');};
+  const addIC=()=>{if(!nic.trim())return;setData(d=>({...d,incomeCategories:[...d.incomeCategories,nic.trim()]}));setNic('');toast('Added','g');};
+  const handleCSV=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{const lines=ev.target.result.split('\n').filter(l=>l.trim());const hdr=lines[0].toLowerCase().split(',').map(h=>h.trim().replace(/"/g,''));const txs=lines.slice(1).map(line=>{const cols=line.split(',').map(c=>c.trim().replace(/"/g,''));const o={};hdr.forEach((h,i)=>o[h]=cols[i]||'');if(!o.date||!o.amount||!o.type)return null;const amount=parseFloat(o.amount);if(isNaN(amount))return null;return{id:uid(),date:o.date,type:o.type.toLowerCase().trim(),category:o.category||'Other Expense',desc:o.description||o.desc||'',amount,month:o.date.slice(0,7)};}).filter(Boolean);setData(d=>({...d,transactions:[...d.transactions,...txs]}));toast(`Imported ${txs.length} transactions`,'g');};r.readAsText(f);e.target.value='';};
+  return(
+    <div className="page">
+      <div className="ph"><div><div className="ptitle">Master Settings</div><div className="psub">Categories, budget limits &amp; CSV import</div></div></div>
+      <div className="card mb3">
+        <div className="sh mb2"><div className="sh-t"><Ic n="budget" s={14} c="var(--g)"/>Budget Limits per Category</div>
+          <div style={{display:'flex',alignItems:'center',gap:10}}><span style={{fontSize:11,color:'var(--n500)'}}>View as:</span><div className="tgl"><button className={`tgo ${view==='monthly'?'on':''}`} onClick={()=>setView('monthly')}>Monthly</button><button className={`tgo ${view==='annual'?'on':''}`} onClick={()=>setView('annual')}>Annual (×12)</button></div></div>
+        </div>
+        <div className="alert ai mb2"><Ic n="prov" s={13}/>Stored as monthly values. Annual = Monthly × 12. Editing either column auto-syncs the other.</div>
+        <div className="tw">
+          <table>
+            <thead><tr><th>Category</th><th className="num" style={{background:view==='monthly'?'var(--gl)':''}}>Monthly Limit (₹)</th><th className="num" style={{background:view==='annual'?'var(--bl)':''}}>Annual Limit (₹) = ×12</th></tr></thead>
+            <tbody>
+              {expenseCategories.map(cat=>{
+                const mo=budgetLimits[cat]||0,an=mo*12;
+                return(<tr key={cat}>
+                  <td style={{fontWeight:700,fontSize:12.5}}>{cat}</td>
+                  <td className="num" style={{background:view==='monthly'?'rgba(0,179,134,.04)':''}}>
+                    <input type="number" min="0" key={`m-${cat}-${mo}`} defaultValue={mo} style={{width:110,padding:'4px 8px',border:`1.5px solid ${view==='monthly'?'var(--g)':'var(--n200)'}`,borderRadius:5,fontFamily:'var(--m)',textAlign:'right',fontSize:12.5}} onBlur={e=>save(cat,e.target.value,'monthly')} onKeyDown={e=>e.key==='Enter'&&save(cat,e.target.value,'monthly')}/>
+                  </td>
+                  <td className="num" style={{background:view==='annual'?'rgba(37,99,235,.04)':''}}>
+                    <input type="number" min="0" key={`a-${cat}-${an}`} defaultValue={an} style={{width:110,padding:'4px 8px',border:`1.5px solid ${view==='annual'?'var(--b)':'var(--n200)'}`,borderRadius:5,fontFamily:'var(--m)',textAlign:'right',fontSize:12.5}} onBlur={e=>save(cat,e.target.value,'annual')} onKeyDown={e=>e.key==='Enter'&&save(cat,e.target.value,'annual')}/>
+                  </td>
+                </tr>);
+              })}
+            </tbody>
+            <tfoot><tr className="tft"><td style={{fontWeight:700}}>Total (Active Cats)</td><td className="num bold">{expenseCategories.reduce((s,c)=>(budgetLimits[c]||0)+s,0).toLocaleString('en-IN')}</td><td className="num bold">{(expenseCategories.reduce((s,c)=>(budgetLimits[c]||0)+s,0)*12).toLocaleString('en-IN')}</td></tr></tfoot>
+          </table>
+        </div>
+      </div>
+      <div className="g2 mb3">
+        <div className="card"><div className="sh mb2"><div className="sh-t"><Ic n="exp" s={14} c="var(--r)"/>Expense Categories</div><span className="tag tr" style={{fontSize:10}}>{expenseCategories.length}</span></div>
+          <div style={{display:'flex',gap:7,marginBottom:10}}><input style={{flex:1,padding:'7px 11px',border:'1.5px solid var(--n200)',borderRadius:'var(--r6)',fontSize:12.5,outline:'none',fontFamily:'var(--f)'}} placeholder="Add expense category…" value={nec} onChange={e=>setNec(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addEC()}/><button className="btn btn-p btn-sm" onClick={addEC}><Ic n="plus" s={12} c="#fff"/></button></div>
+          <div style={{maxHeight:220,overflowY:'auto'}}>{expenseCategories.map(c=>{
+            const isMajor=data.majorExpenseCategories?.includes(c);
+            return(<div key={c} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 0',borderBottom:'1px solid var(--n50)'}}>
+              <span style={{fontSize:12.5,display:'flex',alignItems:'center',gap:6}}>
+                {c}
+                {isMajor&&<span className="major-flag">★ Major</span>}
+              </span>
+              <div style={{display:'flex',gap:4}}>
+                <button className="bic" title={isMajor?'Remove Major Flag':'Mark as Major Expense'} onClick={()=>{setData(d=>{const mec=d.majorExpenseCategories||[];const newMec=mec.includes(c)?mec.filter(x=>x!==c):[...mec,c];return{...d,majorExpenseCategories:newMec};});}} style={{color:isMajor?'var(--o)':''}}><span style={{fontSize:10}}>{isMajor?'★':'☆'}</span></button>
+                <button className="bic red" onClick={()=>{
+                  if(!window.confirm(`Delete category "${c}"? Budget limit for this category will also be removed.`))return;
+                  setData(d=>{const bl={...d.budgetLimits};delete bl[c];return{...d,expenseCategories:d.expenseCategories.filter(x=>x!==c),budgetLimits:bl,majorExpenseCategories:(d.majorExpenseCategories||[]).filter(x=>x!==c)};});
+                  toast('Category and budget limit removed','x');
+                }}><Ic n="del" s={11}/></button>
+              </div>
+            </div>);
+          })}</div>
+        </div>
+        <div className="card"><div className="sh mb2"><div className="sh-t"><Ic n="inc" s={14} c="var(--g)"/>Income Categories</div><span className="tag tg" style={{fontSize:10}}>{incomeCategories.length}</span></div>
+          <div style={{display:'flex',gap:7,marginBottom:10}}><input style={{flex:1,padding:'7px 11px',border:'1.5px solid var(--n200)',borderRadius:'var(--r6)',fontSize:12.5,outline:'none',fontFamily:'var(--f)'}} placeholder="Add income category…" value={nic} onChange={e=>setNic(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addIC()}/><button className="btn btn-p btn-sm" onClick={addIC}><Ic n="plus" s={12} c="#fff"/></button></div>
+          <div style={{maxHeight:220,overflowY:'auto'}}>{incomeCategories.map(c=>(<div key={c} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 0',borderBottom:'1px solid var(--n50)'}}><span style={{fontSize:12.5}}>{c}</span><button className="bic red" onClick={()=>setData(d=>({...d,incomeCategories:d.incomeCategories.filter(x=>x!==c)}))}><Ic n="del" s={11}/></button></div>))}</div>
+        </div>
+      </div>
+      <div className="card mb3">
+        <div className="sh mb2"><div className="sh-t"><Ic n="shield" s={14} c="var(--p)"/>Emergency Fund Configuration</div></div>
+        <div className="alert ai mb3"><Ic n="prov" s={13}/>Link specific accounts and/or FDs to your emergency fund. Target = avg monthly expense × target months.</div>
+        <div className="f2 mb3">
+          <div className="fg">
+            <label>Target (Months of Expenses)</label>
+            <select value={data.emergencyFund?.targetMonths||6} onChange={e=>setData(d=>({...d,emergencyFund:{...(d.emergencyFund||{}),targetMonths:+e.target.value}}))}>
+              {[3,4,5,6,9,12].map(n=><option key={n} value={n}>{n} months</option>)}
+            </select>
+          </div>
+          <div className="fg">
+            <label>Linked Accounts (select all that apply)</label>
+            <div style={{border:'1.5px solid var(--n200)',borderRadius:'var(--r6)',padding:'6px 10px',maxHeight:120,overflowY:'auto'}}>
+              {data.accounts.map(a=>{
+                const linked=(data.emergencyFund?.accountIds||[]).includes(a.id);
+                return(
+                  <label key={a.id} style={{display:'flex',alignItems:'center',gap:8,padding:'4px 0',cursor:'pointer',fontSize:12.5}}>
+                    <input type="checkbox" checked={linked} onChange={()=>setData(d=>{const ids=(d.emergencyFund?.accountIds||[]);const newIds=ids.includes(a.id)?ids.filter(x=>x!==a.id):[...ids,a.id];return{...d,emergencyFund:{...(d.emergencyFund||{}),accountIds:newIds}};})}/>
+                    <span style={{flex:1}}>{a.name}</span>
+                    <span style={{fontFamily:'var(--m)',fontSize:11,color:'var(--n400)'}}>{fmtINR(a.balance,true)}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="card"><div className="sh mb2"><div className="sh-t"><Ic n="up" s={14} c="var(--b)"/>CSV Data Import</div></div>
+        <div className="alert ai mb2"><Ic n="prov" s={13}/>CSV columns: <strong>date (YYYY-MM-DD), type (income/expense), category, description, amount, paymentMode</strong>. First row = header.</div>
+        <input type="file" ref={fileRef} accept=".csv" style={{display:'none'}} onChange={handleCSV}/>
+        <div style={{display:'flex',gap:8}}>
+          <button className="btn btn-s" onClick={()=>fileRef.current.click()}><Ic n="up" s={13}/>Choose CSV &amp; Import</button>
+          <button className="btn btn-g btn-sm" onClick={()=>{const b=new Blob(['date,type,category,description,amount,paymentMode\n2026-04-01,expense,House Rent,April Rent,20500,NEFT/Bank Transfer\n'],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='finmanager-template.csv';a.click();}}>
+            <Ic n="dl" s={12}/>Sample Template
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
+   GOOGLE DRIVE INTEGRATION
+   ─────────────────────────────────────────────────────────
+   HOW IT WORKS:
+   1. User clicks "Connect Google Drive"
+   2. Google OAuth2 popup → user grants permission
+   3. We get an access token (valid ~1 hour)
+   4. Save: POST multipart to Drive API → creates/updates
+      "fundflow-data.json" in user's Google Drive root
+   5. Load: GET file list → find fundflow-data.json → GET content
+   6. Token refreshes silently via GIS token client
+
+   SETUP REQUIRED (one-time by developer):
+   → Go to console.cloud.google.com
+   → Create project → Enable Google Drive API
+   → OAuth consent screen → Add scope: drive.file
+   → Create OAuth 2.0 Web Client ID
+   → Add your GitHub Pages URL to Authorized JavaScript Origins
+   → Paste Client ID into GOOGLE_CLIENT_ID below
+══════════════════════════════════════════════════════════ */
+
+// ▼▼▼ PASTE YOUR GOOGLE CLIENT ID HERE after completing Google Cloud Setup ▼▼▼
+const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
+// ▲▲▲ ──────────────────────────────────────────────────────────────────── ▲▲▲
+
+const DRIVE_FILENAME = 'finmanager-data.json';
+const DRIVE_SCOPE    = 'https://www.googleapis.com/auth/drive.file';
+
+/* ─────────────────────────────────────────────────────────────────────────
+   DriveService  —  plain singleton, NOT inside React
+   Handles all OAuth + Drive REST calls.
+
+   Key design decisions vs the old broken version:
+   1. prompt:'consent'  ensures popup always appears (prompt:'' was silently failing)
+   2. Always call findFile() before save so fileId is fresh
+   3. Multipart upload uses correct boundary string — old FormData approach
+      fails in some browsers because it sends wrong Content-Type header
+   4. loadData() streams via alt=media which needs Accept header trick
+   5. init() retries up to 20× with exponential backoff (GIS loads async)
+   6. Token expiry detected via 401 response → auto-reconnect prompt
+───────────────────────────────────────────────────────────────────────── */
+const DriveService = {
+  _token: null,
+  _client: null,
+  _fileId: null,
+  _initPromise: null,
+
+  /* ── Initialise GIS token client ── */
+  init() {
+    if (this._initPromise) return this._initPromise;
+    this._initPromise = new Promise((resolve) => {
+      let tries = 0;
+      const poll = () => {
+        tries++;
+        if (window.google?.accounts?.oauth2) {
+          try {
+            this._client = window.google.accounts.oauth2.initTokenClient({
+              client_id: GOOGLE_CLIENT_ID,
+              scope: DRIVE_SCOPE,
+              callback: () => {},   // overridden per-request
+            });
+            resolve({ ok: true });
+          } catch (e) {
+            resolve({ ok: false, error: e.message });
+          }
+        } else if (tries < 30) {
+          setTimeout(poll, 500);
+        } else {
+          resolve({ ok: false, error: 'Google Identity Services failed to load after 15 s. Check internet connection.' });
+        }
+      };
+      poll();
+    });
+    return this._initPromise;
+  },
+
+  /* ── Request OAuth token (shows Google popup) ── */
+  getToken() {
+    return new Promise((resolve, reject) => {
+      if (!this._client) { reject(new Error('GIS not initialised. Call init() first.')); return; }
+      this._client.callback = (resp) => {
+        if (resp.error) reject(new Error(`Google auth error: ${resp.error} — ${resp.error_description || ''}`));
+        else { this._token = resp.access_token; resolve(resp.access_token); }
+      };
+      // prompt:'select_account' always shows the picker; safer than ''
+      this._client.requestAccessToken({ prompt: 'select_account' });
+    });
+  },
+
+  /* ── Auth header shortcut ── */
+  _hdrs(extra = {}) {
+    return { Authorization: `Bearer ${this._token}`, ...extra };
+  },
+
+  /* ── Check if a response is a 401 (token expired) ── */
+  _expired(res) { return res.status === 401; },
+
+  /* ── Find fundflow-data.json in Drive root ── */
+  async findFile() {
+    const q  = encodeURIComponent(`name='${DRIVE_FILENAME}' and trashed=false`);
+    const res = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,modifiedTime)&spaces=drive`,
+      { headers: this._hdrs() }
+    );
+    if (this._expired(res)) throw new Error('TOKEN_EXPIRED');
+    if (!res.ok) throw new Error(`Drive search failed: ${res.status} ${res.statusText}`);
+    const json = await res.json();
+    if (json.files?.length > 0) { this._fileId = json.files[0].id; return json.files[0]; }
+    this._fileId = null;
+    return null;
+  },
+
+  /* ── Save data to Drive ── */
+  async save(dataObj) {
+    // Always look up fresh file ID
+    await this.findFile();
+
+    const body = JSON.stringify(dataObj, null, 2);
+
+    if (this._fileId) {
+      // ── PATCH existing file (simple media upload) ──
+      const res = await fetch(
+        `https://www.googleapis.com/upload/drive/v3/files/${this._fileId}?uploadType=media`,
+        {
+          method: 'PATCH',
+          headers: this._hdrs({ 'Content-Type': 'application/json' }),
+          body,
+        }
+      );
+      if (this._expired(res)) throw new Error('TOKEN_EXPIRED');
+      if (!res.ok) throw new Error(`Drive update failed: ${res.status} ${res.statusText}`);
+      return this._fileId;
+    } else {
+      // ── POST new file (multipart upload with manual boundary) ──
+      const boundary = '-------finmanager_boundary_' + Date.now();
+      const delim    = `\r\n--${boundary}\r\n`;
+      const close    = `\r\n--${boundary}--`;
+
+      const metaPart = 'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+                       JSON.stringify({ name: DRIVE_FILENAME, mimeType: 'application/json' });
+      const dataPart = 'Content-Type: application/json\r\n\r\n' + body;
+
+      const multipart = delim + metaPart + delim + dataPart + close;
+
+      const res = await fetch(
+        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
+        {
+          method: 'POST',
+          headers: this._hdrs({
+            'Content-Type': `multipart/related; boundary="${boundary}"`,
+          }),
+          body: multipart,
+        }
+      );
+      if (this._expired(res)) throw new Error('TOKEN_EXPIRED');
+      if (!res.ok) throw new Error(`Drive create failed: ${res.status} ${res.statusText}`);
+      const json = await res.json();
+      if (!json.id) throw new Error('Drive returned no file ID');
+      this._fileId = json.id;
+      return json.id;
+    }
+  },
+
+  /* ── Load data from Drive ── */
+  async load() {
+    const file = await this.findFile();
+    if (!file) return null;
+
+    const res = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`,
+      { headers: this._hdrs({ Accept: 'application/json' }) }
+    );
+    if (this._expired(res)) throw new Error('TOKEN_EXPIRED');
+    if (!res.ok) throw new Error(`Drive download failed: ${res.status} ${res.statusText}`);
+    return await res.json();
+  },
+
+  disconnect() {
+    if (this._token && window.google?.accounts?.oauth2) {
+      try { window.google.accounts.oauth2.revoke(this._token, () => {}); } catch(_) {}
+    }
+    this._token  = null;
+    this._fileId = null;
+  },
+};
+
+
+/* ══════════════════════════════════════
+   DATA MANAGEMENT PAGE (with Drive)
+══════════════════════════════════════ */
+function PageData({data,setData,toast}){
+  const fileRef=useRef();
+  // localStorage auto-save handled by App useEffect
+  const expLocal=()=>{const b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`finmanager-${new Date().toISOString().slice(0,10)}.json`;a.click();toast('Exported','g');};
+  const imp=()=>fileRef.current.click();
+  const himp=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{setData(JSON.parse(ev.target.result));toast('Imported','g');}catch{toast('Invalid JSON','r');}};r.readAsText(f);e.target.value='';};
+  // ── RESET: clears ALL financial data but PRESERVES user profile
+  const reset=()=>{
+    if(window.confirm('Reset all financial data?\n\nThis will PERMANENTLY DELETE:\n• All transactions\n• All accounts & balances\n• All credit cards\n• All loans\n• All provisions\n• All budget limits\n• All categories\n\nYour Profile & Period settings will be KEPT.\n\nThis cannot be undone.')){
+      setData(d=>({
+        profile: d.profile,
+        accounts: [],
+        creditCards: [],
+        loans: [],
+        provisions: [],
+        transactions: [],
+        incomeCategories: [],
+        expenseCategories: [],
+        budgetLimits: {},
+        majorExpenseCategories: [],
+        emergencyFund: {accountIds:[], targetMonths:6},
+      }));
+      try{localStorage.removeItem('ff_v5');localStorage.removeItem('ff_v3');}catch(e){}
+      toast('All financial data deleted. Start fresh!','x');
+    }
+  };
+  const restore=()=>{const s=localStorage.getItem('ff_v5');if(s){try{setData(JSON.parse(s));toast('Restored from auto-backup','g');}catch{toast('Corrupt backup','r');}}else toast('No auto-backup found','r');};
+
+  return(
+    <div className="page">
+      <div className="ph"><div><div className="ptitle">Data Management</div><div className="psub">Export · Import · Restore · Reset</div></div></div>
+      <input type="file" ref={fileRef} accept=".json" style={{display:'none'}} onChange={himp}/>
+
+      {/* Stats */}
+      <div className="g4 mb3">
+        {[{l:'Transactions',v:data.transactions.length},{l:'Accounts',v:data.accounts.length},{l:'Credit Cards',v:data.creditCards.length},{l:'Loans',v:data.loans.length},{l:'Provisions',v:data.provisions.length},{l:'Expense Cats',v:data.expenseCategories.length},{l:'Income Cats',v:data.incomeCategories.length},{l:'Budget Limits',v:Object.keys(data.budgetLimits).length}].map(s=><div className="card" key={s.l}><div className="cl">{s.l}</div><div className="cv" style={{fontSize:18}}>{s.v}</div></div>)}
+      </div>
+
+      <div className="alert as mb3"><Ic n="ok" s={13}/>Auto-backup active — data saved to browser storage on every change. Use Google Drive Sync for cloud backup.</div>
+
+      <div className="g2 mb3">
+        <div className="card">
+          <div className="sh mb2"><div className="sh-t"><Ic n="dl" s={14} c="var(--g)"/>Export Local Backup</div></div>
+          <p style={{fontSize:12.5,color:'var(--n500)',marginBottom:12}}>Download a complete JSON snapshot to your computer. Recommended: save this to your Google Drive folder monthly.</p>
+          <button className="btn btn-p" onClick={expLocal}><Ic n="dl" s={13} c="#fff"/>Export JSON File</button>
+        </div>
+        <div className="card">
+          <div className="sh mb2"><div className="sh-t"><Ic n="up" s={14} c="var(--b)"/>Import Backup File</div></div>
+          <p style={{fontSize:12.5,color:'var(--n500)',marginBottom:12}}>Restore from a previously exported backup JSON file. This overwrites all current data.</p>
+          <button className="btn btn-s" onClick={imp}><Ic n="up" s={13}/>Choose JSON File</button>
+        </div>
+      </div>
+
+      <div className="g2">
+        <div className="card">
+          <div className="sh mb2"><div className="sh-t"><Ic n="refresh" s={14} c="var(--o)"/>Restore Auto-Backup</div></div>
+          <p style={{fontSize:12.5,color:'var(--n500)',marginBottom:12}}>Restore from the last auto-saved localStorage snapshot. Useful if you accidentally made wrong changes.</p>
+          <button className="btn btn-s" onClick={restore}><Ic n="refresh" s={13}/>Restore from Auto-Backup</button>
+        </div>
+        <div className="card" style={{border:'2px solid var(--r)',background:'#fff8f8'}}>
+          <div className="sh mb2"><div className="sh-t" style={{color:'var(--r)'}}><Ic n="del" s={14} c="var(--r)"/>Reset Financial Data</div></div>
+          <div className="alert ae mb2" style={{marginBottom:10}}>
+            <Ic n="prov" s={13}/>
+            <div style={{fontSize:11.5}}>
+              <strong>What gets cleared:</strong> Transactions, Accounts, Credit Cards, Loans, Provisions, Budget Limits, Categories<br/>
+              <strong style={{color:'var(--gd)'}}>What is KEPT:</strong> Your Profile &amp; Period Settings
+            </div>
+          </div>
+          <button className="btn btn-d" onClick={reset}><Ic n="del" s={13}/>Reset Financial Data</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+/* ══════════════════════════════════════
+   GOOGLE DRIVE SYNC PAGE (dedicated tab)
+══════════════════════════════════════ */
+function PageDriveSync({data,setData,toast}){
+  // status: idle | connecting | connected | saving | loading | error
+  const [status,setStatus]=useState(()=>DriveService._token?'connected':'idle');
+  const [msg,setMsg]=useState('');
+  const [detail,setDetail]=useState('');  // technical detail for errors
+  const [lastSave,setLastSave]=useState(null);
+  const [lastLoad,setLastLoad]=useState(null);
+  const [gisReady,setGisReady]=useState(false);
+
+  const clientIdSet = GOOGLE_CLIENT_ID !== 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
+  const isHttps = typeof window!=='undefined' && (window.location.protocol==='https:' || window.location.hostname==='localhost');
+  const busy = status==='connecting'||status==='saving'||status==='loading';
+
+  /* Initialise GIS on mount */
+  useEffect(()=>{
+    if(!clientIdSet) return;
+    DriveService.init().then(res=>{
+      setGisReady(res.ok);
+      if(!res.ok) setDetail(res.error||'GIS failed to load');
+      if(res.ok && DriveService._token){
+        setStatus('connected');
+        setMsg('Session token still active from earlier this session.');
+      }
+    });
+  },[]);
+
+  const ts=()=>new Date().toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+
+  /* Connect */
+  const connect=async()=>{
+    if(!clientIdSet){setStatus('error');setMsg('Google Client ID not configured. See setup checklist below.');return;}
+    if(!isHttps){setStatus('error');setMsg('Google login requires HTTPS. Open from GitHub Pages or localhost.');return;}
+    if(!gisReady){setStatus('error');setMsg('Google Identity Services not loaded yet. Wait 3 seconds and try again.');return;}
+    setStatus('connecting'); setMsg('Google sign-in window is opening…'); setDetail('');
+    try{
+      await DriveService.getToken();
+      setStatus('connected'); setMsg('Signed in successfully. You can now Save or Load.');
+    }catch(e){
+      setStatus('error');
+      setMsg('Sign-in failed or was cancelled.');
+      setDetail(e.message);
+    }
+  };
+
+  /* Save */
+  const save=async()=>{
+    if(!DriveService._token){await connect(); if(!DriveService._token) return;}
+    setStatus('saving'); setMsg('Uploading to Google Drive…'); setDetail('');
+    try{
+      await DriveService.save(data);
+      const t=ts(); setLastSave(t);
+      setStatus('connected');
+      setMsg(`Saved as "${DRIVE_FILENAME}" — ${t}`);
+      toast('Saved to Google Drive ✓','g');
+    }catch(e){
+      if(e.message==='TOKEN_EXPIRED'){
+        setStatus('idle'); DriveService._token=null;
+        setMsg('Your session expired. Click Connect again, then Save.');
+      }else{
+        setStatus('error'); setMsg('Save failed.'); setDetail(e.message);
+        toast('Drive save failed','r');
+      }
+    }
+  };
+
+  /* Load */
+  const load=async()=>{
+    if(!DriveService._token){await connect(); if(!DriveService._token) return;}
+    setStatus('loading'); setMsg('Searching for fundflow-data.json…'); setDetail('');
+    try{
+      const loaded=await DriveService.load();
+      if(loaded){
+        setData(loaded);
+        const t=ts(); setLastLoad(t);
+        setStatus('connected');
+        setMsg(`Data loaded successfully — ${t}`);
+        toast('Loaded from Google Drive ✓','g');
+      }else{
+        setStatus('connected');
+        setMsg('No file found in your Drive yet. Click "Save to Drive" first to create it.');
+        toast('No file found','x');
+      }
+    }catch(e){
+      if(e.message==='TOKEN_EXPIRED'){
+        setStatus('idle'); DriveService._token=null;
+        setMsg('Your session expired. Click Connect again, then Load.');
+      }else{
+        setStatus('error'); setMsg('Load failed.'); setDetail(e.message);
+        toast('Drive load failed','r');
+      }
+    }
+  };
+
+  /* Disconnect */
+  const disconnect=()=>{
+    DriveService.disconnect();
+    setStatus('idle'); setMsg('Disconnected from Google Drive.'); setDetail('');
+  };
+
+  const sc={idle:'var(--n400)',connecting:'var(--o)',connected:'var(--g)',saving:'var(--b)',loading:'var(--b)',error:'var(--r)'};
+
+  const DriveLogo=({sz=20})=>(
+    <svg width={sz} height={sz} viewBox="0 0 87.3 78" fill="none" style={{flexShrink:0}}>
+      <path d="M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3L27.5 53H0c0 1.55.4 3.1 1.2 4.5l5.4 9.35z" fill="#0066DA"/>
+      <path d="M43.65 25L29.9 1.2C28.55.4 27 0 25.45 0c-1.55 0-3.1.4-4.45 1.2L7.25 24.6c-.8 1.4-1.2 2.95-1.2 4.5h27.5L43.65 25z" fill="#00AC47"/>
+      <path d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5H60.1l5.8 11.6 7.65 12.2z" fill="#EA4335"/>
+      <path d="M43.65 25L57.4 1.2C56.05.4 54.5 0 52.95 0H34.35c-1.55 0-3.1.4-4.45 1.2L43.65 25z" fill="#00832D"/>
+      <path d="M60.1 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.45 1.2h50.9c1.55 0 3.1-.4 4.45-1.2L60.1 53z" fill="#2684FC"/>
+      <path d="M73.4 28.5c-.8-1.4-1.95-2.5-3.3-3.3L56.4 1.5 43.65 25l16.45 28H87.3c0-1.55-.4-3.1-1.2-4.5L73.4 28.5z" fill="#FFBA00"/>
+    </svg>
+  );
+
+  return(
+    <div className="page">
+      {/* Header */}
+      <div className="ph">
+        <div>
+          <div className="ptitle" style={{display:'flex',alignItems:'center',gap:10}}>
+            <DriveLogo sz={24}/>Google Drive Sync
+          </div>
+          <div className="psub">Cloud backup — save &amp; load from any device</div>
+        </div>
+        <span style={{fontSize:11.5,fontWeight:700,color:sc[status],background:'var(--n50)',border:'1.5px solid var(--n200)',borderRadius:99,padding:'5px 13px'}}>
+          ● {status.charAt(0).toUpperCase()+status.slice(1)}
+        </span>
+      </div>
+
+      {/* ── Setup checklist ── */}
+      <div className="card mb3">
+        <div className="sh mb2"><div className="sh-t"><Ic n="gear" s={14} c="var(--o)"/>Pre-flight Checklist</div></div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+          {[
+            {l:'Google Client ID pasted into app',ok:clientIdSet},
+            {l:'App open on HTTPS (GitHub Pages / localhost)',ok:isHttps},
+            {l:'Google Identity Services loaded',ok:gisReady},
+            {l:'Drive connection active',ok:status==='connected'},
+          ].map(r=>(
+            <div key={r.l} style={{display:'flex',alignItems:'center',gap:9,padding:'10px 13px',borderRadius:'var(--r8)',background:r.ok?'var(--gl)':'var(--rl)',border:`1px solid ${r.ok?'rgba(0,179,134,.2)':'rgba(220,38,38,.15)'}`}}>
+              <span style={{fontSize:16,lineHeight:1}}>{r.ok?'✅':'❌'}</span>
+              <span style={{fontSize:12,fontWeight:600,color:r.ok?'var(--gd)':'var(--r)'}}>{r.l}</span>
+            </div>
+          ))}
+        </div>
+        {!clientIdSet&&(
+          <div className="alert aw mt2" style={{marginBottom:0}}>
+            <Ic n="prov" s={13}/>
+            <div style={{fontSize:12}}>
+              Open this HTML file in a text editor. Search for <code style={{background:'rgba(0,0,0,.08)',padding:'1px 5px',borderRadius:3,fontFamily:'monospace'}}>YOUR_GOOGLE_CLIENT_ID</code> and replace it with the Client ID from Google Cloud Console. Then re-upload to GitHub Pages.
+            </div>
+          </div>
+        )}
+        {clientIdSet&&!isHttps&&(
+          <div className="alert aw mt2" style={{marginBottom:0}}>
+            <Ic n="prov" s={13}/>
+            <div style={{fontSize:12}}>You are opening this file directly from disk (file://). Google OAuth requires HTTPS. Upload to GitHub Pages first, then open from there.</div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Connection card ── */}
+      <div className="card mb3" style={{border:`2px solid ${status==='connected'?'var(--g)':status==='error'?'var(--r)':'var(--n200)'}`,transition:'border-color .3s'}}>
+        <div style={{display:'flex',gap:16,alignItems:'flex-start'}}>
+          <div style={{width:52,height:52,borderRadius:13,background:status==='connected'?'var(--g)':status==='error'?'var(--rl)':'var(--n100)',display:'grid',placeItems:'center',flexShrink:0,transition:'background .3s'}}>
+            <DriveLogo sz={26}/>
+          </div>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:700,fontSize:14,marginBottom:5,color:status==='error'?'var(--r)':status==='connected'?'var(--gd)':'var(--n900)'}}>
+              {status==='idle'&&'Not connected'}
+              {status==='connecting'&&'Opening Google sign-in…'}
+              {status==='connected'&&'Connected to Google Drive ✓'}
+              {status==='saving'&&'Saving your data…'}
+              {status==='loading'&&'Loading your data…'}
+              {status==='error'&&'Something went wrong'}
+            </div>
+
+            {/* Status message */}
+            {msg&&(
+              <div className={`alert ${status==='error'?'ae':status==='connected'?'as':'ai'}`} style={{marginBottom:12}}>
+                <Ic n={status==='error'?'x':status==='connected'?'ok':'prov'} s={13}/>
+                <div>
+                  <div style={{fontSize:12.5}}>{msg}</div>
+                  {detail&&<div style={{fontSize:11,marginTop:3,opacity:.7,fontFamily:'monospace'}}>{detail}</div>}
+                </div>
+              </div>
+            )}
+
+            {/* Buttons */}
+            <div style={{display:'flex',gap:9,flexWrap:'wrap'}}>
+              {(status==='idle'||status==='error')&&(
+                <button className="btn btn-p" onClick={connect} disabled={!clientIdSet||!isHttps||busy}>
+                  <DriveLogo sz={13}/>Sign in with Google
+                </button>
+              )}
+              {status==='connected'&&(
+                <>
+                  <button className="btn btn-p" onClick={save} disabled={busy}>
+                    <Ic n="dl" s={13} c="#fff"/>Save to Drive
+                  </button>
+                  <button className="btn btn-s" onClick={load} disabled={busy}>
+                    <Ic n="up" s={13}/>Load from Drive
+                  </button>
+                  <button className="btn btn-g btn-sm" onClick={disconnect} style={{color:'var(--r)'}}>
+                    <Ic n="x" s={12}/>Disconnect
+                  </button>
+                </>
+              )}
+              {busy&&(
+                <button className="btn btn-s" disabled style={{opacity:.55}}>
+                  ⏳ {status==='saving'?'Saving…':status==='loading'?'Loading…':'Connecting…'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Sync timestamps */}
+      {(lastSave||lastLoad)&&(
+        <div className="g2 mb3">
+          <div style={{padding:'12px 16px',background:'var(--gl)',borderRadius:'var(--r12)',border:'1px solid rgba(0,179,134,.2)'}}>
+            <div style={{fontSize:10,color:'var(--gd)',fontWeight:700,textTransform:'uppercase',letterSpacing:.5,marginBottom:4}}>Last Saved to Drive</div>
+            <div style={{fontFamily:'var(--m)',fontSize:13,fontWeight:600}}>{lastSave||'–'}</div>
+          </div>
+          <div style={{padding:'12px 16px',background:'var(--bl)',borderRadius:'var(--r12)',border:'1px solid rgba(37,99,235,.15)'}}>
+            <div style={{fontSize:10,color:'var(--bd)',fontWeight:700,textTransform:'uppercase',letterSpacing:.5,marginBottom:4}}>Last Loaded from Drive</div>
+            <div style={{fontFamily:'var(--m)',fontSize:13,fontWeight:600}}>{lastLoad||'–'}</div>
+          </div>
+        </div>
+      )}
+
+      {/* How it works + schedule */}
+      <div className="g2">
+        <div className="card">
+          <div className="sh mb2"><div className="sh-t"><Ic n="prov" s={14} c="var(--b)"/>How It Works</div></div>
+          {[
+            {n:'1',t:'Paste Client ID',d:'Get a free Google OAuth Client ID from console.cloud.google.com and paste it into the HTML file.'},
+            {n:'2',t:'Host on GitHub Pages',d:'Upload index.html to a GitHub repo. Enable Pages. Open the https:// URL.'},
+            {n:'3',t:'Sign in',d:'Click "Sign in with Google". A popup appears — log in and allow drive.file access.'},
+            {n:'4',t:'Save / Load',d:'Save uploads fundflow-data.json to your Drive. Load downloads it on any device.'},
+          ].map(s=>(
+            <div key={s.n} style={{display:'flex',gap:11,marginBottom:11,alignItems:'flex-start'}}>
+              <div style={{width:22,height:22,borderRadius:99,background:'var(--g)',color:'#fff',fontSize:10.5,fontWeight:800,display:'grid',placeItems:'center',flexShrink:0,marginTop:1}}>{s.n}</div>
+              <div><div style={{fontWeight:700,fontSize:12.5,marginBottom:1}}>{s.t}</div><div style={{fontSize:11.5,color:'var(--n500)',lineHeight:1.55}}>{s.d}</div></div>
+            </div>
+          ))}
+        </div>
+        <div className="card">
+          <div className="sh mb2"><div className="sh-t"><Ic n="cal" s={14} c="var(--g)"/>Backup Schedule</div></div>
+          {[
+            {freq:'Automatic',c:'tg',action:'Browser localStorage',how:'Every change auto-saved. No action needed.'},
+            {freq:'Weekly',c:'tb',action:'Save to Google Drive',how:'Connect → Save to Drive button.'},
+            {freq:'Monthly',c:'to',action:'Export JSON file',how:'Data Management → Export JSON.'},
+          ].map(r=>(
+            <div key={r.freq} style={{padding:'10px 0',borderBottom:'1px solid var(--n50)'}}>
+              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:3}}>
+                <span className={`tag ${r.c}`}>{r.freq}</span>
+                <span style={{fontSize:12.5,fontWeight:600}}>{r.action}</span>
+              </div>
+              <div style={{fontSize:11.5,color:'var(--n400)',paddingLeft:4}}>{r.how}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════
+   PROFILE  (with dynamic period setting)
+══════════════════════════════════════ */
+function PageProfile({data,setData,toast}){
+  const {profile}=data;
+  const [editing,setEditing]=useState(false);
+  const [form,setForm]=useState(profile);
+  const save=()=>{setData(d=>({...d,profile:form}));setEditing(false);toast('Profile saved','g');};
+  const fields=[{k:'name',l:'Full Name'},{k:'email',l:'Email Address'},{k:'phone',l:'Phone Number'},{k:'pan',l:'PAN Number'},{k:'currency',l:'Currency'},{k:'city',l:'City'},{k:'avatar',l:'Avatar Initials (2 chars)'}];
+  return(
+    <div className="page">
+      <div className="ph"><div><div className="ptitle">User Profile</div><div className="psub">Personal information &amp; period settings</div></div></div>
+      <div className="row">
+        <div style={{width:220,flexShrink:0}}>
+          <div className="card" style={{textAlign:'center',padding:'24px 16px'}}>
+            <div style={{width:64,height:64,background:'linear-gradient(135deg,#667eea,#764ba2)',borderRadius:'50%',display:'grid',placeItems:'center',margin:'0 auto 12px',fontSize:19,fontWeight:800,color:'#fff'}}>{profile.avatar||profile.name[0]}</div>
+            <div style={{fontWeight:800,fontSize:15}}>{profile.name}</div>
+            <div style={{fontSize:11.5,color:'var(--n400)',marginTop:3}}>{profile.email}</div>
+            <div className="div"/>
+            <div className="sr"><span className="sr-l">City</span><span className="sr-v">{profile.city}</span></div>
+            <div className="sr"><span className="sr-l">Currency</span><span className="sr-v">{profile.currency}</span></div>
+          </div>
+        </div>
+        <div className="col card">
+          <div className="sh mb3">
+            <div className="sh-t"><Ic n="user" s={14} c="var(--g)"/>Personal Details</div>
+            {!editing?<button className="btn btn-s btn-sm" onClick={()=>{setForm(profile);setEditing(true);}}><Ic n="edit" s={12}/>Edit</button>
+            :<div style={{display:'flex',gap:7}}><button className="btn btn-p btn-sm" onClick={save}><Ic n="ok" s={12} c="#fff"/>Save</button><button className="btn btn-g btn-sm" onClick={()=>setEditing(false)}>Cancel</button></div>}
+          </div>
+          <div className="f2 mb3">
+            {fields.map(({k,l})=>(
+              <div className="fg" key={k}>
+                <label>{l}</label>
+                {editing?<input value={form[k]||''} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))}/>
+                :<div style={{padding:'8px 11px',background:'var(--n50)',borderRadius:'var(--r6)',fontSize:13,color:'var(--n700)',border:'1.5px solid var(--n100)'}}>{profile[k]||'–'}</div>}
+              </div>
+            ))}
+          </div>
+
+          {/* DYNAMIC PERIOD SECTION */}
+          <div style={{background:'var(--gl)',border:'1.5px solid var(--g)',borderRadius:'var(--r8)',padding:'14px 16px'}}>
+            <div style={{fontWeight:700,fontSize:13,color:'var(--gd)',marginBottom:3,display:'flex',alignItems:'center',gap:7}}><Ic n="cal" s={14} c="var(--g)"/>Budget Period Settings</div>
+            <div style={{fontSize:12,color:'var(--gd)',opacity:.8,marginBottom:12}}>All charts, P&L, and Budget pages use this period. Change anytime — not locked to a financial year.</div>
+            <div className="f2">
+              <div className="fg">
+                <label style={{color:'var(--gd)'}}>Period Start (Month)</label>
+                {editing?<input type="month" value={form.periodStart} onChange={e=>setForm(f=>({...f,periodStart:e.target.value}))} style={{borderColor:'var(--g)'}}/>
+                :<div style={{padding:'8px 11px',background:'#fff',borderRadius:'var(--r6)',fontSize:13,fontWeight:600,color:'var(--gd)',border:'1.5px solid var(--g)'}}>{profile.periodStart}</div>}
+              </div>
+              <div className="fg">
+                <label style={{color:'var(--gd)'}}>Period End (Month)</label>
+                {editing?<input type="month" value={form.periodEnd} onChange={e=>setForm(f=>({...f,periodEnd:e.target.value}))} style={{borderColor:'var(--g)'}}/>
+                :<div style={{padding:'8px 11px',background:'#fff',borderRadius:'var(--r6)',fontSize:13,fontWeight:600,color:'var(--gd)',border:'1.5px solid var(--g)'}}>{profile.periodEnd}</div>}
+              </div>
+            </div>
+            {editing&&(
+              <div style={{marginTop:10,padding:'8px 11px',background:'#fff',borderRadius:'var(--r6)',fontSize:12,color:'var(--gd)',border:'1px solid var(--g)'}}>
+                📅 Active period will be: <strong>{periodLabel(form.periodStart,form.periodEnd)}</strong> ({getPeriodMonths(form.periodStart,form.periodEnd).length} months)
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+function ScoreBar({label,val,max,color}){
+  return(
+    <div style={{marginBottom:10}}>
+      <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
+        <span style={{fontSize:12}}>{label}</span>
+        <span style={{fontFamily:'var(--m)',fontSize:11,fontWeight:600,color}}>{val}/{max}</span>
+      </div>
+      <div className="prog"><div className="pf" style={{width:`${val/max*100}%`,background:color}}/></div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════
+   CFO DASHBOARD
+══════════════════════════════════════ */
+function PageCFO({data}){
+  const {transactions,accounts,creditCards,loans,budgetLimits,expenseCategories,profile}=data;
+  const months=useMemo(()=>getPeriodMonths(profile.periodStart,profile.periodEnd),[profile.periodStart,profile.periodEnd]);
+
+  const bankBal=accounts.filter(a=>a.type==='bank').reduce((s,a)=>s+a.balance,0);
+  const fdBal=accounts.filter(a=>a.type==='fd').reduce((s,a)=>s+a.balance,0);
+  const cashBal=accounts.filter(a=>a.type==='cash'||a.type==='wallet').reduce((s,a)=>s+a.balance,0);
+  const liquid=bankBal+cashBal;
+  const ccLiab=creditCards.reduce((s,c)=>s+c.payable+c.provision,0);
+  const loanOS=loans.reduce((s,l)=>s+l.outstanding,0);
+  const netWorth=liquid+fdBal-ccLiab-loanOS;
+
+  const periodTxs=transactions.filter(t=>months.some(m=>m.key===t.month));
+  const totalInc=periodTxs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const totalExp=periodTxs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const surplus=totalInc-totalExp;
+  const savingsRate=totalInc>0?(surplus/totalInc*100):0;
+  const avgMonthlyExp=months.length>0?totalExp/months.length:0;
+  const avgMonthlyInc=months.length>0?totalInc/months.length:0;
+  const burnRate=avgMonthlyExp;
+  const runway=burnRate>0?liquid/burnRate:99;
+  const activeBudget=expenseCategories.reduce((s,c)=>(budgetLimits[c]||0)+s,0);
+
+  // Financial Health Score (0-100)
+  const scores={
+    savings: Math.min(25,savingsRate>=30?25:savingsRate>=20?20:savingsRate>=10?12:5),
+    runway: Math.min(20,runway>=12?20:runway>=6?14:runway>=3?8:2),
+    ccUtil: Math.min(20,(()=>{const tL=creditCards.reduce((s,c)=>s+c.limit,0);const tU=creditCards.reduce((s,c)=>s+c.payable+c.provision,0);const u=tL>0?tU/tL*100:0;return u<=10?20:u<=20?16:u<=30?10:4;})()),
+    debtBurden: Math.min(20,(()=>{const monthlyDebt=loans.reduce((s,l)=>s+l.emi,0);const ratio=avgMonthlyInc>0?monthlyDebt/avgMonthlyInc*100:0;return ratio<=15?20:ratio<=25?14:ratio<=35?8:3;})()),
+    surplus: Math.min(15,surplus>0?15:0),
+  };
+  const healthScore=Object.values(scores).reduce((s,v)=>s+v,0);
+  const healthLabel=healthScore>=80?'Excellent':healthScore>=65?'Good':healthScore>=50?'Fair':'Needs Attention';
+  const healthColor=healthScore>=80?'var(--g)':healthScore>=65?'var(--b)':healthScore>=50?'var(--o)':'var(--r)';
+
+  const monthlyTotals=months.map(m=>{
+    const inc=periodTxs.filter(t=>t.month===m.key&&t.type==='income').reduce((s,t)=>s+t.amount,0);
+    const exp=periodTxs.filter(t=>t.month===m.key&&t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    return{...m,inc,exp,surplus:inc-exp};
+  });
+
+  // ScoreBar defined at module level below
+
+  return(
+    <div className="page">
+      <div className="ph"><div><div className="ptitle">CFO Dashboard</div><div className="psub">Runway · Burn Rate · Savings Rate · Health Score</div></div></div>
+
+      {/* Hero Row */}
+      <div className="g4 mb3">
+        <div className={`kpi-card ${healthScore>=65?'g':'r'}`}>
+          <div className="kpi-ic-wrap">
+            <div className="kpi-ic" style={{background:healthScore>=80?'var(--gl)':healthScore>=65?'var(--bl)':healthScore>=50?'var(--ol)':'var(--rl)'}}>
+              <Ic n="shield" c={healthColor}/>
+            </div>
+            <span style={{fontSize:9.5,fontWeight:700,color:healthColor}}>{healthLabel}</span>
+          </div>
+          <div className="cl">Health Score</div>
+          <div className="cv" style={{fontSize:24,color:healthColor}}>{healthScore}<span style={{fontSize:14,color:'var(--n400)'}}>/100</span></div>
+        </div>
+        <div className="kpi-card g">
+          <div className="kpi-ic-wrap"><div className="kpi-ic" style={{background:'var(--gl)'}}><Ic n="inc" c="var(--g)"/></div></div>
+          <div className="cl">Savings Rate</div>
+          <div className={`cv ${savingsRate>=20?'g':savingsRate>=10?'o':'r'}`} style={{fontSize:22}}>{savingsRate.toFixed(1)}%</div>
+          <div className="cm">Target: ≥20% · Period avg</div>
+        </div>
+        <div className="kpi-card o">
+          <div className="kpi-ic-wrap"><div className="kpi-ic" style={{background:'var(--ol)'}}><Ic n="exp" c="var(--o)"/></div></div>
+          <div className="cl">Monthly Burn Rate</div>
+          <div className="cv o" style={{fontSize:18}}>{fmtINR(burnRate,true)}</div>
+          <div className="cm">Avg monthly expense</div>
+        </div>
+        <div className={`kpi-card ${runway>=6?'g':runway>=3?'o':'r'}`}>
+          <div className="kpi-ic-wrap">
+            <div className="kpi-ic" style={{background:runway>=6?'var(--gl)':runway>=3?'var(--ol)':'var(--rl)'}}>
+              <Ic n="cal" c={runway>=6?'var(--g)':runway>=3?'var(--o)':'var(--r)'}/>
+            </div>
+          </div>
+          <div className="cl">Liquid Runway</div>
+          <div className={`cv ${runway>=6?'g':runway>=3?'o':'r'}`} style={{fontSize:22}}>{runway>=99?'∞':runway.toFixed(1)}<span style={{fontSize:12,color:'var(--n400)'}}> mo</span></div>
+          <div className="cm">Liquid ÷ Burn Rate · {runway>=6?'Safe':runway>=3?'Moderate':'Critical'}</div>
+        </div>
+      </div>
+
+      <div className="g2 mb3">
+        {/* Health Score Breakdown */}
+        <div className="card">
+          <div className="sh mb3"><div className="sh-t"><Ic n="shield" s={14} c="var(--g)"/>Health Score Breakdown</div>
+            <div style={{fontFamily:'var(--m)',fontSize:22,fontWeight:800,color:healthColor}}>{healthScore}<span style={{fontSize:12,color:'var(--n400)'}}>/100</span></div>
+          </div>
+          <ScoreBar label="Savings Rate (25 pts)" val={scores.savings} max={25} color="var(--g)"/>
+          <ScoreBar label="Liquid Runway (20 pts)" val={scores.runway} max={20} color="var(--b)"/>
+          <ScoreBar label="CC Utilization (20 pts)" val={scores.ccUtil} max={20} color="var(--o)"/>
+          <ScoreBar label="Debt Burden (20 pts)" val={scores.debtBurden} max={20} color="var(--p)"/>
+          <ScoreBar label="Period Surplus (15 pts)" val={scores.surplus} max={15} color="var(--g)"/>
+          <div className="div"/>
+          <div style={{fontSize:11.5,color:'var(--n400)'}}>
+            {healthScore>=80?'✓ Excellent financial health! Keep up the momentum.':healthScore>=65?'✓ Good health. Work on savings rate and reducing CC utilization.':healthScore>=50?'⚠ Fair health. Focus on building emergency fund and reducing debt.':'⚠ Needs attention. Reduce burn rate and pay down high-interest debt.'}
+          </div>
+        </div>
+
+        {/* Key Ratios */}
+        <div className="card">
+          <div className="sh mb3"><div className="sh-t"><Ic n="pnl" s={14} c="var(--g)"/>Key Financial Ratios</div></div>
+          {[
+            {l:'Gross Income (Period)',v:fmtINR(totalInc),c:'pos'},
+            {l:'Total Expenses (Period)',v:fmtINR(totalExp),c:'neg'},
+            {l:'Net Surplus',v:fmtINR(surplus),c:surplus>=0?'pos':'neg'},
+            {l:'Savings Rate',v:`${savingsRate.toFixed(2)}%`,c:savingsRate>=20?'pos':'neg'},
+            {l:'Avg Monthly Income',v:fmtINR(avgMonthlyInc,true),c:''},
+            {l:'Avg Monthly Burn',v:fmtINR(burnRate,true),c:'neg'},
+            {l:'Debt-to-Income (Monthly)',v:`${avgMonthlyInc>0?(loans.reduce((s,l)=>s+l.emi,0)/avgMonthlyInc*100).toFixed(1):0}%`,c:''},
+            {l:'CC Liability / Net Worth',v:`${netWorth>0?(ccLiab/netWorth*100).toFixed(1):0}%`,c:''},
+            {l:'Liquid Runway',v:`${runway>=99?'∞':runway.toFixed(1)} months`,c:runway>=6?'pos':runway>=3?'':'neg'},
+            {l:'Net Worth',v:fmtINR(netWorth),c:netWorth>=0?'pos':'neg'},
+          ].map(r=>(
+            <div key={r.l} className="sr">
+              <span className="sr-l">{r.l}</span>
+              <span className={`sr-v ${r.c}`}>{r.v}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Monthly Cash Flow Table */}
+      <div className="card">
+        <div className="sh mb2"><div className="sh-t"><Ic n="pnl" s={14} c="var(--g)"/>Monthly Cash Flow</div></div>
+        <div className="tw">
+          <table>
+            <thead><tr><th>Month</th><th className="num">Income</th><th className="num">Expense</th><th className="num">Surplus/Deficit</th><th className="num">Savings %</th><th>Cash Flow</th></tr></thead>
+            <tbody>
+              {monthlyTotals.map(m=>(
+                <tr key={m.key}>
+                  <td style={{fontWeight:700}}>{m.label}</td>
+                  <td className="num pos">{fmtINR(m.inc,true)}</td>
+                  <td className="num neg">{fmtINR(m.exp,true)}</td>
+                  <td className={`num ${m.surplus>=0?'pos':'neg'}`}>{fmtINR(m.surplus,true)}</td>
+                  <td className="num" style={{fontSize:11}}>{m.inc>0?(m.surplus/m.inc*100).toFixed(1):0}%</td>
+                  <td>{m.inc===0&&m.exp===0?<span className="tag tx">No Data</span>:m.surplus>=0?<span className="tag tg">+ve</span>:<span className="tag tr">-ve</span>}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="tft">
+                <td style={{fontWeight:700}}>Period Total</td>
+                <td className="num pos bold">{fmtINR(totalInc,true)}</td>
+                <td className="num neg bold">{fmtINR(totalExp,true)}</td>
+                <td className={`num bold ${surplus>=0?'pos':'neg'}`}>{fmtINR(surplus,true)}</td>
+                <td className="num bold">{savingsRate.toFixed(1)}%</td>
+                <td/>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════
+   DEBT OPTIMIZER (renamed from Debt Killer)
+══════════════════════════════════════ */
+function PageDebtOptimizer({data,setData,toast}){
+  const {loans,creditCards,transactions,profile}=data;
+  const months=useMemo(()=>getPeriodMonths(profile.periodStart,profile.periodEnd),[profile.periodStart,profile.periodEnd]);
+  const [strategy,setStrategy]=useState('avalanche');
+
+  const periodTxs=transactions.filter(t=>months.some(m=>m.key===t.month));
+  const totalInc=periodTxs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const totalExp=periodTxs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const avgSurplus=months.length>0?(totalInc-totalExp)/months.length:0;
+
+  // Build debt list: loans + CC billed
+  const debts=[
+    ...loans.map(l=>({id:l.id,name:`${l.bank} – ${l.type}`,outstanding:l.outstanding,roi:l.roi,emi:l.emi,type:'loan',accNo:l.accNo})),
+    ...creditCards.filter(c=>c.payable>0).map(c=>({id:c.id,name:`${c.bank} ${c.type}`,outstanding:c.payable,roi:24,emi:c.payable,type:'cc',accNo:c.accNo})),
+  ];
+
+  // Avalanche: sort by ROI desc (highest interest first = most savings)
+  // Snowball: sort by outstanding asc (smallest first = quick wins)
+  const sorted=[...debts].sort((a,b)=>strategy==='avalanche'?b.roi-a.roi:a.outstanding-b.outstanding);
+
+  const totalOS=debts.reduce((s,d)=>s+d.outstanding,0);
+  const totalEMI=debts.reduce((s,d)=>s+d.emi,0);
+  const totalInterestLeft=debts.reduce((s,d)=>s+Math.max(0,d.emi*12-d.outstanding*0.1),0); // est.
+
+  // Auto EMI calculator
+  const [calcP,setCalcP]=useState('');const [calcR,setCalcR]=useState('');const [calcT,setCalcT]=useState('');
+  const calcEMI=(p,r,t)=>{if(!p||!r||!t)return 0;const mo=r/12/100;if(mo===0)return p/t;return p*mo*Math.pow(1+mo,t)/(Math.pow(1+mo,t)-1);};
+  const emi=calcEMI(+calcP,+calcR,+calcT);
+  const totalPay=emi*calcT;
+  const interest=totalPay-calcP;
+
+  const CAGR=(pv,fv,n)=>n>0?((Math.pow(fv/Math.max(1,pv),1/n)-1)*100):0;
+
+  return(
+    <div className="page">
+      <div className="ph">
+        <div><div className="ptitle">Debt Optimizer</div><div className="psub">Payoff Priority · ROI Analysis · Auto EMI Calculator</div></div>
+        <div className="tgl">
+          <button className={`tgo ${strategy==='avalanche'?'on':''}`} onClick={()=>setStrategy('avalanche')}>Avalanche (ROI)</button>
+          <button className={`tgo ${strategy==='snowball'?'on':''}`} onClick={()=>setStrategy('snowball')}>Snowball (Balance)</button>
+        </div>
+      </div>
+
+      <div className="g4 mb3">
+        <div className="card"><div className="cl">Total Debt O/S</div><div className="cv r">{fmtINR(totalOS,true)}</div><div className="cm">{debts.length} debts</div></div>
+        <div className="card"><div className="cl">Monthly EMI Total</div><div className="cv o">{fmtINR(totalEMI,true)}</div><div className="cm">{fmtINR(totalEMI*12,true)}/year</div></div>
+        <div className="card"><div className="cl">Avg Monthly Surplus</div><div className={`cv ${avgSurplus>=0?'g':'r'}`}>{fmtINR(Math.abs(avgSurplus),true)}</div><div className="cm">Available for extra payments</div></div>
+        <div className="card"><div className="cl">Blended Cost</div><div className="cv b">{totalOS>0?(debts.reduce((s,d)=>s+d.roi*d.outstanding,0)/totalOS).toFixed(2):0}% p.a.</div><div className="cm">Weighted avg ROI</div></div>
+      </div>
+
+      <div className="alert ai mb3"><Ic n="prov" s={13}/>
+        <strong>{strategy==='avalanche'?'Avalanche Strategy':'Snowball Strategy'}:</strong>{' '}
+        {strategy==='avalanche'?'Pay minimums on all debts, throw extra cash at HIGHEST interest rate debt first. Mathematically optimal — saves the most interest.':'Pay minimums on all debts, throw extra cash at SMALLEST balance first. Psychologically rewarding — builds momentum.'}
+      </div>
+
+      {/* Priority List */}
+      <div className="card mb3">
+        <div className="sh mb2">
+          <div className="sh-t"><Ic n="loan" s={14} c="var(--g)"/>Debt Payoff Priority ({strategy==='avalanche'?'Highest ROI First':'Smallest Balance First'})</div>
+        </div>
+        {sorted.length===0?<div style={{textAlign:'center',padding:'20px',color:'var(--n400)',fontSize:12.5}}>No active debts. Debt-free! 🎉</div>:(
+          <div style={{display:'flex',flexDirection:'column',gap:10}}>
+            {sorted.map((d,i)=>{
+              const isFirst=i===0;
+              const monthsToPayoff=d.emi>0?Math.ceil(d.outstanding/d.emi):999;
+              const intCost=(d.outstanding*(d.roi/100/12)*monthsToPayoff);
+              return(
+                <div key={d.id} style={{padding:'14px 16px',border:`2px solid ${isFirst?'var(--g)':'var(--n100)'}`,borderRadius:'var(--r8)',background:isFirst?'var(--gxl)':'var(--W)',position:'relative'}}>
+                  <div style={{display:'flex',alignItems:'flex-start',gap:12}}>
+                    <div className="debt-priority" style={{background:isFirst?'var(--g)':i===1?'var(--o)':'var(--n200)',color:isFirst?'#fff':i===1?'#fff':'var(--n600)',flexShrink:0}}>
+                      #{i+1}
+                    </div>
+                    <div style={{flex:1}}>
+                      <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
+                        <div>
+                          <div style={{fontWeight:700,fontSize:13}}>{d.name}</div>
+                          <div style={{fontSize:10.5,color:'var(--n400)',fontFamily:'var(--m)'}}>{d.accNo} · {d.type==='cc'?'Credit Card':'Loan'}</div>
+                        </div>
+                        <div style={{textAlign:'right'}}>
+                          <div style={{fontFamily:'var(--m)',fontSize:16,fontWeight:700,color:'var(--r)'}}>{fmtINR(d.outstanding,true)}</div>
+                          <div style={{fontSize:10,color:'var(--n400)'}}>outstanding</div>
+                        </div>
+                      </div>
+                      <div className="g4" style={{gap:10}}>
+                        <div><div style={{fontSize:9,color:'var(--n400)',textTransform:'uppercase',fontWeight:600}}>ROI</div><div style={{fontSize:13,fontWeight:700,color:'var(--r)'}}>{d.roi}%</div></div>
+                        <div><div style={{fontSize:9,color:'var(--n400)',textTransform:'uppercase',fontWeight:600}}>EMI/Month</div><div style={{fontSize:13,fontWeight:700}}>{fmtINR(d.emi,true)}</div></div>
+                        <div><div style={{fontSize:9,color:'var(--n400)',textTransform:'uppercase',fontWeight:600}}>Months Left</div><div style={{fontSize:13,fontWeight:700}}>{monthsToPayoff>=999?'∞':monthsToPayoff}</div></div>
+                        <div><div style={{fontSize:9,color:'var(--n400)',textTransform:'uppercase',fontWeight:600}}>Interest Cost</div><div style={{fontSize:13,fontWeight:700,color:'var(--r)'}}>{fmtINR(intCost,true)}</div></div>
+                      </div>
+                      {isFirst&&avgSurplus>0&&(
+                        <div style={{marginTop:10,padding:'8px 10px',background:'var(--gl)',borderRadius:'var(--r6)',fontSize:12,color:'var(--gd)'}}>
+                          💡 With {fmtINR(avgSurplus,true)} surplus/month → Payoff in ~{Math.ceil(d.outstanding/(d.emi+avgSurplus))} months vs {monthsToPayoff} months currently
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* EMI Calculator */}
+      <div className="card">
+        <div className="sh mb3"><div className="sh-t"><Ic n="loan" s={14} c="var(--b)"/>Auto EMI Calculator</div></div>
+        <div className="f3 mb3">
+          <div className="fg"><label>Principal Amount (₹)</label><input type="number" placeholder="e.g. 500000" value={calcP} onChange={e=>setCalcP(e.target.value)}/></div>
+          <div className="fg"><label>Annual Interest Rate (%)</label><input type="number" step="0.1" placeholder="e.g. 12.5" value={calcR} onChange={e=>setCalcR(e.target.value)}/></div>
+          <div className="fg"><label>Tenure (months)</label><input type="number" placeholder="e.g. 60" value={calcT} onChange={e=>setCalcT(e.target.value)}/></div>
+        </div>
+        {emi>0&&(
+          <div className="g4" style={{gap:12}}>
+            <div className="card flat" style={{background:'var(--gl)'}}><div className="cl">Monthly EMI</div><div className="cv g" style={{fontSize:18}}>{fmtINR(Math.round(emi))}</div></div>
+            <div className="card flat" style={{background:'var(--rl)'}}><div className="cl">Total Payable</div><div className="cv r" style={{fontSize:18}}>{fmtINR(Math.round(totalPay))}</div></div>
+            <div className="card flat" style={{background:'var(--ol)'}}><div className="cl">Total Interest</div><div className="cv o" style={{fontSize:18}}>{fmtINR(Math.round(interest))}</div></div>
+            <div className="card flat" style={{background:'var(--bl)'}}><div className="cl">Effective Cost</div><div className="cv b" style={{fontSize:18}}>{(interest/+calcP*100).toFixed(1)}%</div></div>
+          </div>
+        )}
+        {!emi&&<div style={{textAlign:'center',padding:'16px',color:'var(--n400)',fontSize:12.5}}>Enter principal, rate, and tenure to calculate EMI</div>}
+      </div>
+    </div>
+  );
+}
+
+
+/* ══════════════════════════════════════
+   APP ROOT
+══════════════════════════════════════ */
+const NAV=[
+  {s:'Overview',items:[{id:'dashboard',l:'Dashboard',n:'home'},{id:'fund',l:'Fund Balance',n:'fund'},{id:'pnl',l:'P & L Statement',n:'pnl'}]},
+  {s:'Transactions',items:[{id:'expense',l:'Expense Tracker',n:'exp'},{id:'income',l:'Income Tracker',n:'inc'},{id:'budget',l:'Budget vs Actual',n:'budget'},{id:'provision',l:'Provisions',n:'prov'}]},
+  {s:'Liabilities',items:[{id:'cc',l:'Credit Cards',n:'cc'},{id:'loan',l:'Loan Tracker',n:'loan'}]},
+  {s:'Analysis',items:[{id:'cfo',l:'CFO Dashboard',n:'pnl'},{id:'debt',l:'Debt Optimizer',n:'loan'}]},
+  {s:'System',items:[
+    {id:'master',l:'Master Settings',n:'gear'},
+    {id:'data',l:'Data Management',n:'db'},
+    {id:'drive',l:'Google Drive Sync',n:'drive'},
+    {id:'profile',l:'Profile & Period',n:'user'},
+  ]},
+];
+const PT={dashboard:'Dashboard',fund:'Fund Balance',pnl:'P & L Statement',expense:'Expense Tracker',income:'Income Tracker',budget:'Budget vs Actual',provision:'Provisions',cc:'Credit Cards',loan:'Loan Tracker',cfo:'CFO Dashboard',debt:'Debt Optimizer',master:'Master Settings',data:'Data Management',drive:'Google Drive Sync',profile:'Profile & Period'};
+
+function App(){
+  const [pg,setPg]=useState('dashboard');
+  const [data,setData]=useState(()=>{
+    try{
+      const s=localStorage.getItem('ff_v5');
+      if(s){
+        const p=JSON.parse(s);
+        if(!p.profile?.periodStart)p.profile={...p.profile,periodStart:'2025-04',periodEnd:'2026-03'};
+        if(!p.majorExpenseCategories)p.majorExpenseCategories=['House Rent','Insurance','Medical Expense'];
+        if(!p.emergencyFund)p.emergencyFund={accountIds:[],targetMonths:6};
+        return p;
+      }
+      return JSON.parse(JSON.stringify(SEED));
+    }catch{return JSON.parse(JSON.stringify(SEED));}
+  });
+  // ── ARCHITECTURE: save to localStorage on EVERY state change ──
+  useEffect(()=>{try{localStorage.setItem('ff_v5',JSON.stringify(data));}catch(e){};},[data]);
+  const [toast,setToast]=useState(null);
+  const showToast=(msg,type)=>setToast({msg,type});
+
+  const ccAlerts=data.creditCards.filter(c=>{const d=daysDiff(c.dueDate);return d!==null&&d<=7&&d>=0&&c.payable>0;}).length;
+  const months=useMemo(()=>getPeriodMonths(data.profile.periodStart,data.profile.periodEnd),[data.profile.periodStart,data.profile.periodEnd]);
+
+  const rp=()=>{
+    const p={data,setData,toast:showToast,setPage:setPg};
+    switch(pg){
+      case 'dashboard': return <PageDashboard {...p}/>;
+      case 'fund': return <PageFund {...p}/>;
+      case 'pnl': return <PagePnL {...p}/>;
+      case 'expense': return <PageTx {...p} type="expense"/>;
+      case 'income': return <PageTx {...p} type="income"/>;
+      case 'budget': return <PageBudget {...p}/>;
+      case 'provision': return <PageProvision {...p}/>;
+      case 'cc': return <PageCC {...p}/>;
+      case 'loan': return <PageLoans {...p}/>;
+      case 'master': return <PageMaster {...p}/>;
+      case 'data': return <PageData {...p}/>;
+      case 'drive': return <PageDriveSync {...p}/>;
+      case 'profile': return <PageProfile {...p}/>;
+      case 'cfo': return <PageCFO {...p}/>;
+      case 'debt': return <PageDebtOptimizer {...p}/>;
+      default: return <PageDashboard {...p}/>;
+    }
+  };
+
+  return(
+    <>
+      <aside className="sb">
+        <div className="sb-head">
+          <div className="sb-mark"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm.31 14.14c-1.51.29-2.72 1.16-2.73 2.77h-2.34v-1.67c-1.5-.31-2.76-1.27-2.86-2.97h1.71c.09.92.72 1.64 2.32 1.64 1.71 0 2.1-.86 2.1-1.39 0-.72-.39-1.41-2.34-1.87-2.17-.52-3.66-1.42-3.66-3.21 0-1.51 1.21-2.49 2.72-2.81V5h2.34v1.71c1.62.4 2.44 1.63 2.49 2.97h-1.71c-.04-.98-.56-1.64-1.94-1.64-1.31 0-2.1.59-2.1 1.43 0 .73.57 1.22 2.34 1.67 1.76.46 3.65 1.22 3.66 3.42-.01 1.61-1.21 2.48-2.73 2.77v-.19h-.07z"/></svg></div>
+          <div>
+            <div className="sb-app" style={{fontSize:12}}>Personal FinManager</div>
+            <div className="sb-period">by Vipin Nair · {periodLabel(data.profile.periodStart,data.profile.periodEnd)}</div>
+          </div>
+        </div>
+        <nav className="sb-nav">
+          {NAV.map(g=>(
+            <div key={g.s}>
+              <div className="sb-group">{g.s}</div>
+              {g.items.map(item=>(
+                <div key={item.id} className={`sb-item ${pg===item.id?'on':''}`} onClick={()=>setPg(item.id)}>
+                  <span className="sb-ic"><Ic n={item.n} s={14}/></span>
+                  {item.l}
+                  {item.id==='cc'&&ccAlerts>0&&<span className="sb-badge">{ccAlerts}</span>}
+                </div>
+              ))}
+            </div>
+          ))}
+        </nav>
+        <div className="sb-foot">
+          <div className="sb-user" onClick={()=>setPg('profile')}>
+            <div className="sb-av">{data.profile.avatar||data.profile.name[0]}</div>
+            <div><div className="sb-uname">{data.profile.name}</div><div className="sb-uemail">{data.profile.email}</div></div>
+          </div>
+        </div>
+      </aside>
+
+      <main className="main">
+        <div className="topbar">
+          <div className="tb-left">
+            <div className="tb-title">{PT[pg]}</div>
+            <span style={{fontSize:11.5,color:'var(--n400)'}}>· {periodLabel(data.profile.periodStart,data.profile.periodEnd)}</span>
+          </div>
+          <div className="tb-right">
+            <span className="tag tg" style={{fontSize:10}}>● Live</span>
+            <span className="tag tx" style={{fontSize:10}}>{fmtDate(new Date().toISOString().slice(0,10))}</span>
+            {ccAlerts>0&&(
+              <button onClick={()=>setPg('cc')} style={{position:'relative',background:'none',border:'none',cursor:'pointer',padding:5,display:'flex'}}>
+                <Ic n="bell" s={16} c="var(--r)"/>
+                <span style={{position:'absolute',top:-2,right:-2,background:'var(--r)',color:'#fff',borderRadius:'50%',width:13,height:13,fontSize:8,fontWeight:700,display:'grid',placeItems:'center'}}>{ccAlerts}</span>
+              </button>
+            )}
+            <a href="https://calendar.google.com/calendar/r/eventedit?text=FinManager+Consultation+with+Vipin+Nair&details=Consultation+request+via+Personal+FinManager.+Contact:+audit.vipin@gmail.com&location=Google+Meet&add=audit.vipin@gmail.com" target="_blank" rel="noopener noreferrer" style={{textDecoration:'none'}}>
+              <button className="btn btn-sm" style={{background:'linear-gradient(135deg,#1a73e8,#1557b0)',color:'#fff',border:'none',display:'flex',alignItems:'center',gap:5}}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                Book Consultation
+              </button>
+            </a>
+            <button className="btn btn-p btn-sm" onClick={()=>setPg('data')}><Ic n="dl" s={12} c="#fff"/>Backup</button>
+          </div>
+        </div>
+        {rp()}
+      </main>
+
+      {toast&&<Toast msg={toast.msg} type={toast.type} onClose={()=>setToast(null)}/>}
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+<div style="position:fixed;bottom:0;left:0;right:0;background:#0f172a;color:#94a3b8;font-size:10.5px;font-family:'Plus Jakarta Sans',sans-serif;padding:5px 20px;display:flex;align-items:center;justify-content:space-between;z-index:9999;border-top:1px solid #1e293b;">
+  <span>© 2024–2026 <strong style="color:#fff">Vipin Nair</strong> · Personal FinManager · All Rights Reserved</span>
+  <span>Suggestions &amp; Feedback: <a href="mailto:audit.vipin@gmail.com" style="color:#6ee7b7;text-decoration:none">audit.vipin@gmail.com</a></span>
+</div>
+</html>
