@@ -1868,9 +1868,9 @@ function PageMaster({data,setData,toast}){
    → Paste Client ID into GOOGLE_CLIENT_ID below
 ══════════════════════════════════════════════════════════ */
 
-// ▼▼▼ PASTE YOUR GOOGLE CLIENT ID HERE after completing Google Cloud Setup ▼▼▼
-const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
-// ▲▲▲ ──────────────────────────────────────────────────────────────────── ▲▲▲
+// ▼▼▼ Google Client ID — can be set via UI or hardcoded here ▼▼▼
+let GOOGLE_CLIENT_ID = (()=>{try{return localStorage.getItem('fm_google_client_id')||'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';}catch{return 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';}})();
+// ▲▲▲ ──────────────────────────────────────────────────────── ▲▲▲
 
 const DRIVE_FILENAME = 'finmanager-data.json';
 const DRIVE_SCOPE    = 'https://www.googleapis.com/auth/drive.file';
@@ -1895,8 +1895,8 @@ const DriveService = {
   _initPromise: null,
 
   /* ── Initialise GIS token client ── */
-  init() {
-    if (this._initPromise) return this._initPromise;
+  init(forceReinit) {
+    if (this._initPromise && !forceReinit) return this._initPromise;
     this._initPromise = new Promise((resolve) => {
       let tries = 0;
       const poll = () => {
@@ -2174,14 +2174,25 @@ function PageDriveSync({data,setData,toast}){
   // status: idle | connecting | connected | saving | loading | error
   const [status,setStatus]=useState(()=>DriveService._token?'connected':'idle');
   const [msg,setMsg]=useState('');
-  const [detail,setDetail]=useState('');  // technical detail for errors
+  const [detail,setDetail]=useState('');
   const [lastSave,setLastSave]=useState(null);
   const [lastLoad,setLastLoad]=useState(null);
   const [gisReady,setGisReady]=useState(false);
+  const [clientIdInput,setClientIdInput]=useState(GOOGLE_CLIENT_ID==='YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com'?'':GOOGLE_CLIENT_ID);
 
-  const clientIdSet = GOOGLE_CLIENT_ID !== 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
+  const clientIdSet = GOOGLE_CLIENT_ID !== 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com' && GOOGLE_CLIENT_ID.includes('.apps.googleusercontent.com');
   const isHttps = typeof window!=='undefined' && (window.location.protocol==='https:' || window.location.hostname==='localhost');
   const busy = status==='connecting'||status==='saving'||status==='loading';
+
+  const saveClientId=()=>{
+    const val=clientIdInput.trim();
+    if(!val||!val.includes('.apps.googleusercontent.com')){toast('Invalid Client ID format','r');return;}
+    GOOGLE_CLIENT_ID=val;
+    try{localStorage.setItem('fm_google_client_id',val);}catch{}
+    DriveService._initPromise=null;DriveService._client=null;
+    DriveService.init(true).then(res=>{setGisReady(res.ok);if(!res.ok)setDetail(res.error||'');});
+    toast('Client ID saved','g');
+  };
 
   /* Initialise GIS on mount */
   useEffect(()=>{
@@ -2297,36 +2308,30 @@ function PageDriveSync({data,setData,toast}){
         </span>
       </div>
 
-      {/* ── Setup checklist ── */}
-      <div className="card mb3">
-        <div className="sh mb2"><div className="sh-t"><Ic n="gear" s={14} c="var(--o)"/>Pre-flight Checklist</div></div>
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+      {/* ── Google OAuth Client ID Setup ── */}
+      <div className="card mb3" style={{border:`1.5px solid ${clientIdSet?'var(--g)':'var(--o)'}`}}>
+        <div className="sh mb2"><div className="sh-t"><Ic n="gear" s={14} c="var(--o)"/>Google OAuth 2.0 Client ID</div></div>
+        <div style={{fontSize:12,color:'var(--n500)',marginBottom:10,lineHeight:1.6}}>
+          Generate at <strong>console.cloud.google.com</strong> → APIs &amp; Services → Credentials → OAuth 2.0 Client IDs. For GitHub Pages, add <code style={{background:'rgba(0,0,0,.06)',padding:'1px 5px',borderRadius:3,fontFamily:'var(--m)',fontSize:11}}>https://YOUR-USERNAME.github.io</code> to Authorized JavaScript Origins.
+        </div>
+        <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:10}}>
+          <input value={clientIdInput} onChange={e=>setClientIdInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&saveClientId()} placeholder="xxxxxxxx.apps.googleusercontent.com" style={{flex:1,padding:'9px 13px',border:`1.5px solid ${clientIdSet?'var(--g)':'var(--n200)'}`,borderRadius:'var(--r6)',fontSize:12.5,fontFamily:'var(--m)',color:'var(--n700)',outline:'none',background:'var(--W)'}}/>
+          <button className="btn btn-p btn-sm" onClick={saveClientId} disabled={!clientIdInput.trim()} style={{background:'var(--r)',padding:'8px 16px'}}>Save</button>
+        </div>
+        {/* Status indicators */}
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
           {[
-            {l:'Google Client ID pasted into app',ok:clientIdSet},
-            {l:'App open on HTTPS (GitHub Pages / localhost)',ok:isHttps},
-            {l:'Google Identity Services loaded',ok:gisReady},
-            {l:'Drive connection active',ok:status==='connected'},
+            {l:'Client ID configured',ok:clientIdSet},
+            {l:'HTTPS / GitHub Pages',ok:isHttps},
+            {l:'Google Identity Services',ok:gisReady},
+            {l:'Drive connected',ok:status==='connected'},
           ].map(r=>(
-            <div key={r.l} style={{display:'flex',alignItems:'center',gap:9,padding:'10px 13px',borderRadius:'var(--r8)',background:r.ok?'var(--gl)':'var(--rl)',border:`1px solid ${r.ok?'rgba(0,179,134,.2)':'rgba(220,38,38,.15)'}`}}>
-              <span style={{fontSize:16,lineHeight:1}}>{r.ok?'✅':'❌'}</span>
-              <span style={{fontSize:12,fontWeight:600,color:r.ok?'var(--gd)':'var(--r)'}}>{r.l}</span>
+            <div key={r.l} style={{display:'flex',alignItems:'center',gap:7,padding:'7px 10px',borderRadius:'var(--r6)',background:r.ok?'var(--gl)':'var(--n50)',fontSize:11.5,fontWeight:600,color:r.ok?'var(--gd)':'var(--n400)'}}>
+              {r.ok?'\u2705':'\u274C'} {r.l}
             </div>
           ))}
         </div>
-        {!clientIdSet&&(
-          <div className="alert aw mt2" style={{marginBottom:0}}>
-            <Ic n="prov" s={13}/>
-            <div style={{fontSize:12}}>
-              Open this HTML file in a text editor. Search for <code style={{background:'rgba(0,0,0,.08)',padding:'1px 5px',borderRadius:3,fontFamily:'monospace'}}>YOUR_GOOGLE_CLIENT_ID</code> and replace it with the Client ID from Google Cloud Console. Then re-upload to GitHub Pages.
-            </div>
-          </div>
-        )}
-        {clientIdSet&&!isHttps&&(
-          <div className="alert aw mt2" style={{marginBottom:0}}>
-            <Ic n="prov" s={13}/>
-            <div style={{fontSize:12}}>You are opening this file directly from disk (file://). Google OAuth requires HTTPS. Upload to GitHub Pages first, then open from there.</div>
-          </div>
-        )}
+        {clientIdSet&&!isHttps&&<div className="alert aw mt2" style={{marginBottom:0}}><Ic n="prov" s={13}/><span style={{fontSize:11.5}}>Google OAuth needs HTTPS. Host on GitHub Pages or use localhost.</span></div>}
       </div>
 
       {/* ── Connection card ── */}
@@ -2844,92 +2849,52 @@ function PageAI({data,toast}){
   const {transactions,accounts,creditCards,loans,provisions,budgetLimits,expenseCategories,incomeCategories,profile}=data;
   const months=useMemo(()=>getPeriodMonths(profile.periodStart,profile.periodEnd),[profile.periodStart,profile.periodEnd]);
 
-  /* ── Build financial summary for AI context ── */
+  /* ── Build compact financial summary for AI (token-efficient) ── */
   const buildContext=()=>{
     const periodTxs=transactions.filter(t=>months.some(m=>m.key===t.month));
     const totalInc=periodTxs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
     const totalExp=periodTxs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-    const surplus=totalInc-totalExp;
     const bankBal=accounts.filter(a=>a.type==='bank').reduce((s,a)=>s+a.balance,0);
     const fdBal=accounts.filter(a=>a.type==='fd').reduce((s,a)=>s+a.balance,0);
     const cashBal=accounts.filter(a=>a.type==='cash'||a.type==='wallet').reduce((s,a)=>s+a.balance,0);
     const ccLiab=creditCards.reduce((s,c)=>s+c.payable+c.provision,0);
     const loanOS=loans.reduce((s,l)=>s+l.outstanding,0);
     const provTotal=provisions.reduce((s,p)=>s+p.amount,0);
-    const netWorth=bankBal+cashBal+fdBal-ccLiab-loanOS-provTotal;
     const totalEMI=loans.reduce((s,l)=>s+l.emi,0);
     const totalLimit=creditCards.reduce((s,c)=>s+c.limit,0);
-    const ccUtil=totalLimit>0?(ccLiab/totalLimit*100).toFixed(1):0;
+    const f=n=>Math.round(n);// compact numbers
 
-    // Monthly breakdown
-    const mBreak=months.map(m=>{
-      const inc=periodTxs.filter(t=>t.month===m.key&&t.type==='income').reduce((s,t)=>s+t.amount,0);
-      const exp=periodTxs.filter(t=>t.month===m.key&&t.type==='expense').reduce((s,t)=>s+t.amount,0);
-      return `${m.label}: Income ${fmtINR(inc,true)}, Expense ${fmtINR(exp,true)}, ${inc-exp>=0?'Surplus':'Deficit'} ${fmtINR(Math.abs(inc-exp),true)}`;
-    }).join('\n');
-
-    // Category breakdown
+    // Top 6 expense cats only
     const catMap={};periodTxs.filter(t=>t.type==='expense').forEach(t=>{catMap[t.category]=(catMap[t.category]||0)+t.amount;});
-    const topCats=Object.entries(catMap).sort((a,b)=>b[1]-a[1]).map(([c,v])=>`${c}: ${fmtINR(v,true)} (Budget: ${fmtINR(budgetLimits[c]||0,true)}/mo)`).join('\n');
+    const topCats=Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([c,v])=>`${c}:${f(v)}(bgt:${f((budgetLimits[c]||0)*months.length)})`).join(',');
 
-    const incCatMap={};periodTxs.filter(t=>t.type==='income').forEach(t=>{incCatMap[t.category]=(incCatMap[t.category]||0)+t.amount;});
-    const incCats=Object.entries(incCatMap).sort((a,b)=>b[1]-a[1]).map(([c,v])=>`${c}: ${fmtINR(v,true)}`).join('\n');
+    // Income sources
+    const incMap={};periodTxs.filter(t=>t.type==='income').forEach(t=>{incMap[t.category]=(incMap[t.category]||0)+t.amount;});
+    const incCats=Object.entries(incMap).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([c,v])=>`${c}:${f(v)}`).join(',');
 
-    // Payment mode breakdown
-    const pmMap={};periodTxs.filter(t=>t.type==='expense').forEach(t=>{const pm=t.paymentMode||'Unknown';pmMap[pm]=(pmMap[pm]||0)+t.amount;});
-    const pmBreak=Object.entries(pmMap).sort((a,b)=>b[1]-a[1]).map(([pm,v])=>`${pm}: ${fmtINR(v,true)}`).join(', ');
+    // Monthly P&L (compact)
+    const mBreak=months.map(m=>{
+      const i=periodTxs.filter(t=>t.month===m.key&&t.type==='income').reduce((s,t)=>s+t.amount,0);
+      const e=periodTxs.filter(t=>t.month===m.key&&t.type==='expense').reduce((s,t)=>s+t.amount,0);
+      return i||e?`${m.label}:I${f(i)}/E${f(e)}`:null;
+    }).filter(Boolean).join('|');
 
-    // Loan details
-    const loanDetails=loans.map(l=>`${l.bank} ${l.type}: Outstanding ${fmtINR(l.outstanding,true)}, EMI ${fmtINR(l.emi,true)}/mo, ROI ${l.roi}%, Remaining ${l.remaining}/${l.tenure} months`).join('\n');
+    // Loans compact
+    const loanStr=loans.map(l=>`${l.bank}(${l.type}):OS${f(l.outstanding)},EMI${f(l.emi)},ROI${l.roi}%,Rem${l.remaining}mo`).join(';');
 
-    // CC details
-    const ccDetails=creditCards.map(c=>{const d=daysDiff(c.dueDate);return `${c.bank} ${c.type}: Limit ${fmtINR(c.limit,true)}, Billed ${fmtINR(c.payable,true)}, Unbilled ${fmtINR(c.provision,true)}${c.dueDate?`, Due ${fmtDate(c.dueDate)} (${d}d)`:''}`;}).join('\n');
+    // CC compact
+    const ccStr=creditCards.map(c=>`${c.bank}:Lmt${f(c.limit)},Billed${f(c.payable)},Unbilled${f(c.provision)}${c.dueDate?',Due'+c.dueDate:''}`).join(';');
 
-    return `
-PERSONAL FINANCE DATA — ${profile.name}
-Period: ${periodLabel(profile.periodStart,profile.periodEnd)} (${months.length} months)
-Currency: INR (Indian Rupees)
-
-═══ BALANCE SHEET ═══
-Bank Balance: ${fmtINR(bankBal,true)}
-Cash + Wallet: ${fmtINR(cashBal,true)}
-Fixed Deposits: ${fmtINR(fdBal,true)}
-CC Liability: ${fmtINR(ccLiab,true)} (Utilization: ${ccUtil}% of ${fmtINR(totalLimit,true)})
-Loan Outstanding: ${fmtINR(loanOS,true)}
-Provisions: ${fmtINR(provTotal,true)}
-NET WORTH: ${fmtINR(netWorth,true)}
-
-═══ PERIOD P&L ═══
-Total Income: ${fmtINR(totalInc,true)}
-Total Expense: ${fmtINR(totalExp,true)}
-Surplus/Deficit: ${fmtINR(surplus,true)} (Savings Rate: ${totalInc>0?(surplus/totalInc*100).toFixed(1):0}%)
-Avg Monthly Income: ${fmtINR(months.length>0?totalInc/months.length:0,true)}
-Avg Monthly Expense: ${fmtINR(months.length>0?totalExp/months.length:0,true)}
-Monthly EMI Outflow: ${fmtINR(totalEMI,true)}
-
-═══ MONTHLY BREAKDOWN ═══
-${mBreak||'No monthly data'}
-
-═══ EXPENSE CATEGORIES (Period Total vs Monthly Budget) ═══
-${topCats||'No expense data'}
-
-═══ INCOME SOURCES ═══
-${incCats||'No income data'}
-
-═══ PAYMENT MODES ═══
-${pmBreak||'Unknown'}
-
-═══ LOANS ═══
-${loanDetails||'No loans'}
-
-═══ CREDIT CARDS ═══
-${ccDetails||'No credit cards'}
-
-═══ PROVISIONS ═══
-${provisions.length>0?provisions.map(p=>`${p.month} ${p.entity} — ${p.type}: ${p.narration} (${fmtINR(p.amount,true)})`).join('\n'):'No provisions'}
-
-Major Expense Categories (for Emergency Fund): ${(data.majorExpenseCategories||[]).join(', ')||'None set'}
-`.trim();
+    return `User:${profile.name}|Period:${months.length}mo(${profile.periodStart} to ${profile.periodEnd})|INR
+BALANCE:Bank${f(bankBal)},Cash${f(cashBal)},FD${f(fdBal)},CCDue${f(ccLiab)}(${totalLimit>0?(ccLiab/totalLimit*100).toFixed(0):0}%of${f(totalLimit)}),Loans${f(loanOS)},Prov${f(provTotal)},NW${f(bankBal+cashBal+fdBal-ccLiab-loanOS-provTotal)}
+P&L:Inc${f(totalInc)},Exp${f(totalExp)},Surplus${f(totalInc-totalExp)},SaveRate${totalInc>0?((totalInc-totalExp)/totalInc*100).toFixed(1):0}%,AvgMoInc${f(months.length>0?totalInc/months.length:0)},AvgMoExp${f(months.length>0?totalExp/months.length:0)},EMI/mo${f(totalEMI)}
+MONTHS:${mBreak||'none'}
+EXP_CATS:${topCats||'none'}
+INC_SRC:${incCats||'none'}
+LOANS:${loanStr||'none'}
+CC:${ccStr||'none'}
+PROV:${provisions.length>0?provisions.slice(0,5).map(p=>`${p.type||p.entity}:${f(p.amount)}`).join(','):'none'}
+MAJOR_CATS:${(data.majorExpenseCategories||[]).join(',')||'none'}`.trim();
   };
 
   /* ── Call AI API (Anthropic Claude / OpenAI GPT) ── */
@@ -2939,19 +2904,7 @@ Major Expense Categories (for Emergency Fund): ${(data.majorExpenseCategories||[
     if(!isChat){setResult('');setActivePrompt(userPrompt);}
 
     const ctx=buildContext();
-    const systemPrompt=`You are an expert Indian personal finance advisor embedded inside "Personal FinManager by Vipin Nair". You analyze real financial data provided to you and give specific, actionable, data-backed insights.
-
-RULES:
-- Always reference actual numbers from the data (use INR formatting with commas).
-- Be specific: "Your House Rent is 38% of expenses" not "housing costs are high".
-- Give 3-5 clear, prioritized recommendations with expected impact.
-- Use Indian financial context: mention Section 80C/80D, NPS, PPF, ELSS, SIP, GST where relevant.
-- Flag risks: high CC utilization, no emergency fund, single income dependency, over-budget categories.
-- Be encouraging but honest. Celebrate wins (good savings rate, low debt) before flagging concerns.
-- Keep language professional but warm. Use short paragraphs and bullet-style formatting with dashes.
-- If asked to compare months, reference specific month names and amounts.
-- Format currency as Indian: use Lakhs (L) and Thousands (K).
-- Never make up data. Only reference what is provided.`;
+    const systemPrompt=`You are an Indian personal finance advisor analyzing real data from "Personal FinManager". Use actual numbers (INR). Be specific, actionable. Reference 80C/80D/NPS/SIP where relevant. 3-5 prioritized tips. Celebrate wins before flagging concerns. Format with short paragraphs and dashes. Numbers in Lakhs(L)/Thousands(K). Never fabricate data.`;
 
     const userMsg=isChat?userPrompt:`Here is my complete financial data:\n\n${ctx}\n\n---\n\nBased on this data, please: ${userPrompt}`;
     const messages=isChat
@@ -2968,7 +2921,7 @@ RULES:
           headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiKey.trim()}`},
           body:JSON.stringify({
             model:'llama-3.3-70b-versatile',
-            max_tokens:1500,
+            max_tokens:1024,
             messages:[{role:'system',content:systemPrompt+'\n\nFINANCIAL DATA:\n'+ctx},...messages],
           }),
         });
@@ -2986,7 +2939,7 @@ RULES:
           headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiKey.trim()}`},
           body:JSON.stringify({
             model:'gpt-4o-mini',
-            max_tokens:1500,
+            max_tokens:1024,
             messages:[{role:'system',content:systemPrompt+'\n\nFINANCIAL DATA:\n'+ctx},...messages],
           }),
         });
@@ -3045,7 +2998,7 @@ RULES:
           headers,
           body:JSON.stringify({
             model:'claude-sonnet-4-20250514',
-            max_tokens:1500,
+            max_tokens:1024,
             system:systemPrompt+'\n\nFINANCIAL DATA:\n'+ctx,
             messages,
           }),
