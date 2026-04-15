@@ -1873,28 +1873,12 @@ let GOOGLE_CLIENT_ID = (()=>{try{return localStorage.getItem('fm_google_client_i
 // ▲▲▲ ──────────────────────────────────────────────────────── ▲▲▲
 
 const DRIVE_FILENAME = 'finmanager-data.json';
+const DRIVE_FOLDER   = 'PersonalFinManager';
 const DRIVE_SCOPE    = 'https://www.googleapis.com/auth/drive.file';
 
-/* ─────────────────────────────────────────────────────────────────────────
-   DriveService  —  plain singleton, NOT inside React
-   Handles all OAuth + Drive REST calls.
-
-   Key design decisions vs the old broken version:
-   1. prompt:'consent'  ensures popup always appears (prompt:'' was silently failing)
-   2. Always call findFile() before save so fileId is fresh
-   3. Multipart upload uses correct boundary string — old FormData approach
-      fails in some browsers because it sends wrong Content-Type header
-   4. loadData() streams via alt=media which needs Accept header trick
-   5. init() retries up to 20× with exponential backoff (GIS loads async)
-   6. Token expiry detected via 401 response → auto-reconnect prompt
-───────────────────────────────────────────────────────────────────────── */
 const DriveService = {
-  _token: null,
-  _client: null,
-  _fileId: null,
-  _initPromise: null,
+  _token: null, _client: null, _fileId: null, _folderId: null, _initPromise: null,
 
-  /* ── Initialise GIS token client ── */
   init(forceReinit) {
     if (this._initPromise && !forceReinit) return this._initPromise;
     this._initPromise = new Promise((resolve) => {
@@ -1904,134 +1888,99 @@ const DriveService = {
         if (window.google?.accounts?.oauth2) {
           try {
             this._client = window.google.accounts.oauth2.initTokenClient({
-              client_id: GOOGLE_CLIENT_ID,
-              scope: DRIVE_SCOPE,
-              callback: () => {},   // overridden per-request
+              client_id: GOOGLE_CLIENT_ID, scope: DRIVE_SCOPE, callback: () => {},
             });
             resolve({ ok: true });
-          } catch (e) {
-            resolve({ ok: false, error: e.message });
-          }
-        } else if (tries < 30) {
-          setTimeout(poll, 500);
-        } else {
-          resolve({ ok: false, error: 'Google Identity Services failed to load after 15 s. Check internet connection.' });
-        }
+          } catch (e) { resolve({ ok: false, error: e.message }); }
+        } else if (tries < 30) { setTimeout(poll, 500); }
+        else { resolve({ ok: false, error: 'Google Identity Services failed to load.' }); }
       };
       poll();
     });
     return this._initPromise;
   },
 
-  /* ── Request OAuth token (shows Google popup) ── */
   getToken() {
     return new Promise((resolve, reject) => {
-      if (!this._client) { reject(new Error('GIS not initialised. Call init() first.')); return; }
+      if (!this._client) { reject(new Error('GIS not initialised.')); return; }
       this._client.callback = (resp) => {
-        if (resp.error) reject(new Error(`Google auth error: ${resp.error} — ${resp.error_description || ''}`));
+        if (resp.error) reject(new Error(`Google auth error: ${resp.error}`));
         else { this._token = resp.access_token; resolve(resp.access_token); }
       };
-      // prompt:'select_account' always shows the picker; safer than ''
       this._client.requestAccessToken({ prompt: 'select_account' });
     });
   },
 
-  /* ── Auth header shortcut ── */
-  _hdrs(extra = {}) {
-    return { Authorization: `Bearer ${this._token}`, ...extra };
-  },
-
-  /* ── Check if a response is a 401 (token expired) ── */
+  _hdrs(extra = {}) { return { Authorization: `Bearer ${this._token}`, ...extra }; },
   _expired(res) { return res.status === 401; },
 
-  /* ── Find fundflow-data.json in Drive root ── */
-  async findFile() {
-    const q  = encodeURIComponent(`name='${DRIVE_FILENAME}' and trashed=false`);
-    const res = await fetch(
-      `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,modifiedTime)&spaces=drive`,
-      { headers: this._hdrs() }
-    );
+  async ensureFolder() {
+    if (this._folderId) return this._folderId;
+    const q = encodeURIComponent(`name='${DRIVE_FOLDER}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)&spaces=drive`, { headers: this._hdrs() });
     if (this._expired(res)) throw new Error('TOKEN_EXPIRED');
-    if (!res.ok) throw new Error(`Drive search failed: ${res.status} ${res.statusText}`);
     const json = await res.json();
-    if (json.files?.length > 0) { this._fileId = json.files[0].id; return json.files[0]; }
-    this._fileId = null;
-    return null;
+    if (json.files?.length > 0) { this._folderId = json.files[0].id; return this._folderId; }
+    const cr = await fetch('https://www.googleapis.com/drive/v3/files?fields=id', {
+      method: 'POST', headers: this._hdrs({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ name: DRIVE_FOLDER, mimeType: 'application/vnd.google-apps.folder' }),
+    });
+    if (!cr.ok) throw new Error('Could not create Drive folder');
+    const folder = await cr.json(); this._folderId = folder.id; return this._folderId;
   },
 
-  /* ── Save data to Drive ── */
+  async findFile() {
+    const folderId = await this.ensureFolder();
+    const q = encodeURIComponent(`name='${DRIVE_FILENAME}' and '${folderId}' in parents and trashed=false`);
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,modifiedTime)&spaces=drive`, { headers: this._hdrs() });
+    if (this._expired(res)) throw new Error('TOKEN_EXPIRED');
+    if (!res.ok) throw new Error(`Drive search failed: ${res.status}`);
+    const json = await res.json();
+    if (json.files?.length > 0) { this._fileId = json.files[0].id; return json.files[0]; }
+    this._fileId = null; return null;
+  },
+
   async save(dataObj) {
-    // Always look up fresh file ID
     await this.findFile();
-
-    const body = JSON.stringify(dataObj, null, 2);
-
+    const payload = { ...dataObj, _lastSyncedAt: new Date().toISOString() };
+    const body = JSON.stringify(payload, null, 2);
     if (this._fileId) {
-      // ── PATCH existing file (simple media upload) ──
-      const res = await fetch(
-        `https://www.googleapis.com/upload/drive/v3/files/${this._fileId}?uploadType=media`,
-        {
-          method: 'PATCH',
-          headers: this._hdrs({ 'Content-Type': 'application/json' }),
-          body,
-        }
-      );
+      const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${this._fileId}?uploadType=media`,
+        { method: 'PATCH', headers: this._hdrs({ 'Content-Type': 'application/json' }), body });
       if (this._expired(res)) throw new Error('TOKEN_EXPIRED');
-      if (!res.ok) throw new Error(`Drive update failed: ${res.status} ${res.statusText}`);
+      if (!res.ok) throw new Error(`Drive update failed: ${res.status}`);
       return this._fileId;
     } else {
-      // ── POST new file (multipart upload with manual boundary) ──
-      const boundary = '-------finmanager_boundary_' + Date.now();
-      const delim    = `\r\n--${boundary}\r\n`;
-      const close    = `\r\n--${boundary}--`;
-
-      const metaPart = 'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
-                       JSON.stringify({ name: DRIVE_FILENAME, mimeType: 'application/json' });
-      const dataPart = 'Content-Type: application/json\r\n\r\n' + body;
-
-      const multipart = delim + metaPart + delim + dataPart + close;
-
-      const res = await fetch(
-        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
-        {
-          method: 'POST',
-          headers: this._hdrs({
-            'Content-Type': `multipart/related; boundary="${boundary}"`,
-          }),
-          body: multipart,
-        }
-      );
+      const folderId = await this.ensureFolder();
+      const boundary = '-------fm_' + Date.now();
+      const meta = 'Content-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify({ name: DRIVE_FILENAME, mimeType: 'application/json', parents: [folderId] });
+      const dat = 'Content-Type: application/json\r\n\r\n' + body;
+      const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+        method: 'POST', headers: this._hdrs({ 'Content-Type': `multipart/related; boundary="${boundary}"` }),
+        body: `\r\n--${boundary}\r\n${meta}\r\n--${boundary}\r\n${dat}\r\n--${boundary}--`
+      });
       if (this._expired(res)) throw new Error('TOKEN_EXPIRED');
-      if (!res.ok) throw new Error(`Drive create failed: ${res.status} ${res.statusText}`);
-      const json = await res.json();
-      if (!json.id) throw new Error('Drive returned no file ID');
-      this._fileId = json.id;
-      return json.id;
+      if (!res.ok) throw new Error(`Drive create failed: ${res.status}`);
+      const json = await res.json(); this._fileId = json.id; return json.id;
     }
   },
 
-  /* ── Load data from Drive ── */
   async load() {
     const file = await this.findFile();
     if (!file) return null;
-
-    const res = await fetch(
-      `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`,
-      { headers: this._hdrs({ Accept: 'application/json' }) }
-    );
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`, { headers: this._hdrs({ Accept: 'application/json' }) });
     if (this._expired(res)) throw new Error('TOKEN_EXPIRED');
-    if (!res.ok) throw new Error(`Drive download failed: ${res.status} ${res.statusText}`);
-    return await res.json();
+    if (!res.ok) throw new Error(`Drive download failed: ${res.status}`);
+    const loaded = await res.json();
+    return { data: loaded, modifiedTime: file.modifiedTime, syncedAt: loaded._lastSyncedAt || null };
   },
 
   disconnect() {
-    if (this._token && window.google?.accounts?.oauth2) {
-      try { window.google.accounts.oauth2.revoke(this._token, () => {}); } catch(_) {}
-    }
-    this._token  = null;
-    this._fileId = null;
+    if (this._token && window.google?.accounts?.oauth2) { try { window.google.accounts.oauth2.revoke(this._token, () => {}); } catch(_) {} }
+    this._token = null; this._fileId = null; this._folderId = null;
   },
 };
+
 
 
 /* ══════════════════════════════════════
@@ -2170,7 +2119,7 @@ function PageData({data,setData,toast}){
 /* ══════════════════════════════════════
    GOOGLE DRIVE SYNC PAGE (dedicated tab)
 ══════════════════════════════════════ */
-function PageDriveSync({data,setData,toast}){
+function PageDriveSync({data,setData,toast,syncMode,toggleSyncMode}){
   // status: idle | connecting | connected | saving | loading | error
   const [status,setStatus]=useState(()=>DriveService._token?'connected':'idle');
   const [msg,setMsg]=useState('');
@@ -2233,7 +2182,7 @@ function PageDriveSync({data,setData,toast}){
       await DriveService.save(data);
       const t=ts(); setLastSave(t);
       setStatus('connected');
-      setMsg(`Saved as "${DRIVE_FILENAME}" — ${t}`);
+      setMsg(`Saved to Drive > ${DRIVE_FOLDER} > ${DRIVE_FILENAME} — ${t}`);
       toast('Saved to Google Drive ✓','g');
     }catch(e){
       if(e.message==='TOKEN_EXPIRED'){
@@ -2249,24 +2198,51 @@ function PageDriveSync({data,setData,toast}){
   /* Load */
   const load=async()=>{
     if(!DriveService._token){await connect(); if(!DriveService._token) return;}
-    setStatus('loading'); setMsg('Searching for fundflow-data.json…'); setDetail('');
+    setStatus('loading'); setMsg(`Searching in Google Drive > ${DRIVE_FOLDER} > ${DRIVE_FILENAME}…`); setDetail('');
     try{
-      const loaded=await DriveService.load();
-      if(loaded){
-        setData(loaded);
-        const t=ts(); setLastLoad(t);
-        setStatus('connected');
-        setMsg(`Data loaded successfully — ${t}`);
-        toast('Loaded from Google Drive ✓','g');
+      const result=await DriveService.load();
+      if(result){
+        const driveTime=result.syncedAt?new Date(result.syncedAt):new Date(result.modifiedTime);
+        const localTime=data._lastSyncedAt?new Date(data._lastSyncedAt):null;
+        // Remove sync metadata before comparing
+        const cleanDrive={...result.data};delete cleanDrive._lastSyncedAt;delete cleanDrive._syncSource;
+        const cleanLocal={...data};delete cleanLocal._lastSyncedAt;delete cleanLocal._syncSource;
+
+        if(localTime && localTime > driveTime){
+          // Local is newer — ask user
+          const useLocal=window.confirm(
+            `Your LOCAL data is NEWER than Drive data.\n\nLocal: ${localTime.toLocaleString('en-IN')}\nDrive: ${driveTime.toLocaleString('en-IN')}\n\nClick OK to keep local (and push to Drive).\nClick Cancel to overwrite local with Drive data.`
+          );
+          if(useLocal){
+            await DriveService.save(data);
+            const t=ts(); setLastSave(t);
+            setStatus('connected');
+            setMsg(`Local data was newer — pushed to Drive at ${t}`);
+            toast('Local data pushed to Drive ✓','g');
+          }else{
+            setData(result.data);
+            const t=ts(); setLastLoad(t);
+            setStatus('connected');
+            setMsg(`Loaded older Drive data — ${t}`);
+            toast('Loaded from Drive ✓','g');
+          }
+        }else{
+          // Drive is newer or same — load it
+          setData(result.data);
+          const t=ts(); setLastLoad(t);
+          setStatus('connected');
+          setMsg(`Loaded from Drive > ${DRIVE_FOLDER} — ${t}${result.syncedAt?' (synced '+new Date(result.syncedAt).toLocaleString('en-IN')+')':''}`);
+          toast('Loaded from Google Drive ✓','g');
+        }
       }else{
         setStatus('connected');
-        setMsg('No file found in your Drive yet. Click "Save to Drive" first to create it.');
+        setMsg(`No file found in Drive > ${DRIVE_FOLDER}. Click "Save to Drive" first.`);
         toast('No file found','x');
       }
     }catch(e){
       if(e.message==='TOKEN_EXPIRED'){
         setStatus('idle'); DriveService._token=null;
-        setMsg('Your session expired. Click Connect again, then Load.');
+        setMsg('Session expired. Click Connect again.');
       }else{
         setStatus('error'); setMsg('Load failed.'); setDetail(e.message);
         toast('Drive load failed','r');
@@ -2391,6 +2367,52 @@ function PageDriveSync({data,setData,toast}){
         </div>
       </div>
 
+      {/* ── Sync Mode Toggle ── */}
+      {status==='connected'&&(
+        <div className="card mb3" style={{border:`1.5px solid ${syncMode==='auto'?'var(--g)':'var(--n200)'}`}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+            <div style={{display:'flex',alignItems:'center',gap:12}}>
+              <div style={{width:40,height:40,borderRadius:10,background:syncMode==='auto'?'var(--gl)':'var(--n100)',display:'grid',placeItems:'center'}}>
+                <Ic n={syncMode==='auto'?'refresh':'cal'} s={18} c={syncMode==='auto'?'var(--g)':'var(--n500)'}/>
+              </div>
+              <div>
+                <div style={{fontWeight:700,fontSize:13}}>Sync Mode: <span style={{color:syncMode==='auto'?'var(--gd)':'var(--n500)'}}>{syncMode==='auto'?'Auto Sync':'Manual'}</span></div>
+                <div style={{fontSize:11.5,color:'var(--n400)',marginTop:1}}>
+                  {syncMode==='auto'
+                    ?'Data auto-syncs to Drive every 5 minutes and when you close the tab. No action needed.'
+                    :'Click "☁ Sync" in the top bar or "Save to Drive" below to push changes manually.'}
+                </div>
+              </div>
+            </div>
+            <div style={{display:'flex',alignItems:'center',gap:8}}>
+              <span style={{fontSize:11,color:'var(--n400)',fontWeight:600}}>Manual</span>
+              <div onClick={()=>toggleSyncMode(syncMode==='auto'?'manual':'auto')} style={{width:44,height:24,borderRadius:99,background:syncMode==='auto'?'var(--g)':'var(--n300)',cursor:'pointer',position:'relative',transition:'background .2s',flexShrink:0}}>
+                <div style={{width:18,height:18,borderRadius:99,background:'#fff',position:'absolute',top:3,left:syncMode==='auto'?23:3,transition:'left .2s',boxShadow:'0 1px 3px rgba(0,0,0,.2)'}}/>
+              </div>
+              <span style={{fontSize:11,color:syncMode==='auto'?'var(--gd)':'var(--n400)',fontWeight:600}}>Auto</span>
+            </div>
+          </div>
+          {syncMode==='auto'&&(
+            <div style={{marginTop:10,padding:'8px 12px',background:'var(--gl)',borderRadius:'var(--r6)',fontSize:11.5,color:'var(--gd)',display:'flex',alignItems:'center',gap:6}}>
+              <Ic n="ok" s={12} c="var(--g)"/>Auto-sync active — changes save to Drive > {DRIVE_FOLDER} every 5 min. Free, no charges.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── File Location ── */}
+      <div className="card mb3" style={{background:'var(--n50)'}}>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <DriveLogo sz={18}/>
+          <div>
+            <div style={{fontSize:11,fontWeight:700,color:'var(--n500)',textTransform:'uppercase',letterSpacing:.5}}>Drive File Location</div>
+            <div style={{fontFamily:'var(--m)',fontSize:12.5,color:'var(--n700)',marginTop:2}}>
+              Google Drive &gt; <span style={{color:'var(--gd)',fontWeight:700}}>{DRIVE_FOLDER}</span> &gt; <span style={{color:'var(--b)'}}>{DRIVE_FILENAME}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Sync timestamps */}
       {(lastSave||lastLoad)&&(
         <div className="g2 mb3">
@@ -2410,10 +2432,10 @@ function PageDriveSync({data,setData,toast}){
         <div className="card">
           <div className="sh mb2"><div className="sh-t"><Ic n="prov" s={14} c="var(--b)"/>How It Works</div></div>
           {[
-            {n:'1',t:'Paste Client ID',d:'Get a free Google OAuth Client ID from console.cloud.google.com and paste it into the HTML file.'},
+            {n:'1',t:'Paste Client ID',d:'Get a free Google OAuth Client ID from console.cloud.google.com and paste it in the field above.'},
             {n:'2',t:'Host on GitHub Pages',d:'Upload index.html to a GitHub repo. Enable Pages. Open the https:// URL.'},
-            {n:'3',t:'Sign in',d:'Click "Sign in with Google". A popup appears — log in and allow drive.file access.'},
-            {n:'4',t:'Save / Load',d:'Save uploads fundflow-data.json to your Drive. Load downloads it on any device.'},
+            {n:'3',t:'Sign in & Connect',d:'Click "Sign in with Google". A popup appears — log in and allow drive.file access.'},
+            {n:'4',t:'Auto or Manual Sync',d:`Toggle Auto to sync every 5 min, or keep Manual and click "☁ Sync". File saves to Drive > ${DRIVE_FOLDER} > ${DRIVE_FILENAME}.`},
           ].map(s=>(
             <div key={s.n} style={{display:'flex',gap:11,marginBottom:11,alignItems:'flex-start'}}>
               <div style={{width:22,height:22,borderRadius:99,background:'var(--g)',color:'#fff',fontSize:10.5,fontWeight:800,display:'grid',placeItems:'center',flexShrink:0,marginTop:1}}>{s.n}</div>
@@ -2424,9 +2446,9 @@ function PageDriveSync({data,setData,toast}){
         <div className="card">
           <div className="sh mb2"><div className="sh-t"><Ic n="cal" s={14} c="var(--g)"/>Backup Schedule</div></div>
           {[
-            {freq:'Automatic',c:'tg',action:'Browser localStorage',how:'Every change auto-saved. No action needed.'},
-            {freq:'Weekly',c:'tb',action:'Save to Google Drive',how:'Connect → Save to Drive button.'},
-            {freq:'Monthly',c:'to',action:'Export JSON file',how:'Data Management → Export JSON.'},
+            {freq:'Automatic',c:'tg',action:'Browser localStorage',how:'Every change auto-saved instantly. No action needed.'},
+            {freq:'Toggle',c:syncMode==='auto'?'tg':'to',action:`Google Drive: ${syncMode==='auto'?'AUTO':'MANUAL'}`,how:syncMode==='auto'?'Auto-syncs every 5 min + on tab close. Toggle in top bar.':'Click "☁ Sync" in top bar to push changes. Toggle to Auto in top bar.'},
+            {freq:'Monthly',c:'to',action:'Export JSON file',how:'Data Management → Export JSON. Extra safety net.'},
           ].map(r=>(
             <div key={r.freq} style={{padding:'10px 0',borderBottom:'1px solid var(--n50)'}}>
               <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:3}}>
@@ -3386,6 +3408,37 @@ function App(){
   });
   // ── ARCHITECTURE: save to localStorage on EVERY state change ──
   useEffect(()=>{try{localStorage.setItem('ff_v5',JSON.stringify(data));}catch(e){};},[data]);
+
+  // ── SMART SYNC to Google Drive ──
+  const [driveAutoStatus,setDriveAutoStatus]=useState('idle');
+  const [syncMode,setSyncMode]=useState(()=>{try{return localStorage.getItem('fm_sync_mode')||'manual';}catch{return 'manual';}});
+  const dataRef=useRef(data);
+  const lastSyncedRef=useRef(null);
+  dataRef.current=data;
+
+  const toggleSyncMode=(mode)=>{setSyncMode(mode);try{localStorage.setItem('fm_sync_mode',mode);}catch{}};
+
+  const driveSyncNow=useCallback(async(silent=false)=>{
+    if(!DriveService._token)return;
+    const currentJson=JSON.stringify(dataRef.current);
+    if(currentJson===lastSyncedRef.current)return;
+    try{
+      if(!silent)setDriveAutoStatus('saving');
+      await DriveService.save(dataRef.current);
+      lastSyncedRef.current=currentJson;
+      if(!silent){setDriveAutoStatus('saved');setTimeout(()=>setDriveAutoStatus('idle'),3000);}
+    }catch(e){
+      if(!silent){setDriveAutoStatus('error');setTimeout(()=>setDriveAutoStatus('idle'),5000);}
+    }
+  },[]);
+
+  useEffect(()=>{
+    if(syncMode!=='auto')return; // Only run timers in auto mode
+    const handleUnload=()=>{if(DriveService._token)driveSyncNow(true);};
+    window.addEventListener('beforeunload',handleUnload);
+    const interval=setInterval(()=>{driveSyncNow(false);},5*60*1000);
+    return()=>{window.removeEventListener('beforeunload',handleUnload);clearInterval(interval);};
+  },[driveSyncNow,syncMode]);
   const [toast,setToast]=useState(null);
   const showToast=(msg,type)=>setToast({msg,type});
 
@@ -3406,7 +3459,7 @@ function App(){
       case 'loan': return <PageLoans {...p}/>;
       case 'master': return <PageMaster {...p}/>;
       case 'data': return <PageData {...p}/>;
-      case 'drive': return <PageDriveSync {...p}/>;
+      case 'drive': return <PageDriveSync {...p} syncMode={syncMode} toggleSyncMode={toggleSyncMode}/>;
       case 'profile': return <PageProfile {...p}/>;
       case 'cfo': return <PageCFO {...p}/>;
       case 'debt': return <PageDebtOptimizer {...p}/>;
@@ -3456,6 +3509,16 @@ function App(){
           </div>
           <div className="tb-right">
             <span className="tag tg" style={{fontSize:10}}>● Live</span>
+            {DriveService._token&&(
+              <div style={{display:'flex',alignItems:'center',gap:3}}>
+                <button onClick={()=>toggleSyncMode(syncMode==='auto'?'manual':'auto')} className={`tag ${syncMode==='auto'?'tg':'tx'}`} style={{fontSize:9.5,cursor:'pointer',border:'none',fontFamily:'var(--f)',padding:'2px 7px'}} title={syncMode==='auto'?'Auto-sync ON (click to switch to manual)':'Manual sync (click to enable auto)'}>
+                  {syncMode==='auto'?'⟳ Auto':'⏸ Manual'}
+                </button>
+                <button onClick={()=>driveSyncNow(false)} className={`tag ${driveAutoStatus==='saving'?'to':driveAutoStatus==='saved'?'tg':driveAutoStatus==='error'?'tr':'tb'}`} style={{fontSize:9.5,cursor:'pointer',border:'none',fontFamily:'var(--f)',padding:'2px 7px'}} title="Sync now to Google Drive">
+                  {driveAutoStatus==='saving'?'↑ Syncing':driveAutoStatus==='saved'?'☁ Synced':driveAutoStatus==='error'?'☁ Retry':'☁ Sync'}
+                </button>
+              </div>
+            )}
             <span className="tag tx" style={{fontSize:10}}>{fmtDate(new Date().toISOString().slice(0,10))}</span>
             {ccAlerts>0&&(
               <button onClick={()=>setPg('cc')} style={{position:'relative',background:'none',border:'none',cursor:'pointer',padding:5,display:'flex'}}>
