@@ -7,6 +7,7 @@
 <meta name="description" content="Personal Fund & Budget Manager with Google Drive sync"/>
 <!-- Google Identity Services (for OAuth2 login) -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <!-- Google API client library (for Drive API calls) -->
 <script src="https://apis.google.com/js/api.js" async defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
@@ -4596,12 +4597,13 @@ function HealthModule({ onBack }) {
   const [seniorCitizens, setSeniorCitizens] = useState(0);
   const [income, setIncome] = useState(1500000);
 
-  useEffect(() => { saveState({ health: { tier, members, seniorCitizens, income } }); },
+  const _firstLoad = useRef(true);
+  useEffect(() => { if (_firstLoad.current) return; saveState({ health: { tier, members, seniorCitizens, income } }); },
     [tier, members, seniorCitizens, income]);
 
   useEffect(() => {
     const s = loadState().health;
-    if (s) { setTier(s.tier ?? "metro"); setMembers(s.members ?? 3); setSeniorCitizens(s.seniorCitizens ?? 0); setIncome(s.income ?? 1500000); }
+    if (s) { setTier(s.tier ?? "metro"); setMembers(s.members ?? 3); setSeniorCitizens(s.seniorCitizens ?? 0); setIncome(s.income ?? 1500000); } _firstLoad.current = false;
   }, []);
 
   const rec = useMemo(() => {
@@ -4709,12 +4711,13 @@ function TermModule({ onBack }) {
   const [existingCover, setExistingCover] = useState(0);
   const [age, setAge] = useState(30);
 
-  useEffect(() => { saveState({ term: { income, loans, childEducation, existingCover, age } }); },
+  const _firstLoad = useRef(true);
+  useEffect(() => { if (_firstLoad.current) return; saveState({ term: { income, loans, childEducation, existingCover, age } }); },
     [income, loans, childEducation, existingCover, age]);
 
   useEffect(() => {
     const s = loadState().term;
-    if (s) { setIncome(s.income ?? 1500000); setLoans(s.loans ?? 0); setChildEducation(s.childEducation ?? 0); setExistingCover(s.existingCover ?? 0); setAge(s.age ?? 30); }
+    if (s) { setIncome(s.income ?? 1500000); setLoans(s.loans ?? 0); setChildEducation(s.childEducation ?? 0); setExistingCover(s.existingCover ?? 0); setAge(s.age ?? 30); } _firstLoad.current = false;
   }, []);
 
   const rec = useMemo(() => {
@@ -4806,10 +4809,12 @@ function AccidentModule({ onBack }) {
   const [income, setIncome] = useState(1500000);
   const [multiplier, setMultiplier] = useState(7);
 
-  useEffect(() => { saveState({ accident: { income, multiplier } }); }, [income, multiplier]);
+  const _firstLoad = useRef(true);
+  useEffect(() => { if (_firstLoad.current) return; saveState({ accident: { income, multiplier } }); },
+    [income, multiplier]);
   useEffect(() => {
     const s = loadState().accident;
-    if (s) { setIncome(s.income ?? 1500000); setMultiplier(s.multiplier ?? 7); }
+    if (s) { setIncome(s.income ?? 1500000); setMultiplier(s.multiplier ?? 7); } _firstLoad.current = false;
   }, []);
 
   const rec = income * multiplier;
@@ -4894,11 +4899,12 @@ function EmergencyFundModule({ onBack }) {
   const [currentSaved, setCurrentSaved] = useState(0);
   const [buildMonths, setBuildMonths] = useState(12);
 
-  useEffect(() => { saveState({ emergency: { monthlyExpense, months, currentSaved, buildMonths } }); },
+  const _firstLoad = useRef(true);
+  useEffect(() => { if (_firstLoad.current) return; saveState({ emergency: { monthlyExpense, months, currentSaved, buildMonths } }); },
     [monthlyExpense, months, currentSaved, buildMonths]);
   useEffect(() => {
     const s = loadState().emergency;
-    if (s) { setMonthlyExpense(s.monthlyExpense ?? 60000); setMonths(s.months ?? 6); setCurrentSaved(s.currentSaved ?? 0); setBuildMonths(s.buildMonths ?? 12); }
+    if (s) { setMonthlyExpense(s.monthlyExpense ?? 60000); setMonths(s.months ?? 6); setCurrentSaved(s.currentSaved ?? 0); setBuildMonths(s.buildMonths ?? 12); } _firstLoad.current = false;
   }, []);
 
   const calc = useMemo(() => {
@@ -4995,11 +5001,12 @@ function SIPModule({ onBack }) {
   const [expectedReturn, setExpectedReturn] = useState(13);
   const [stepUp, setStepUp] = useState(10);
 
-  useEffect(() => { saveState({ sip: { monthly, years, expectedReturn, stepUp } }); },
+  const _firstLoad = useRef(true);
+  useEffect(() => { if (_firstLoad.current) return; saveState({ sip: { monthly, years, expectedReturn, stepUp } }); },
     [monthly, years, expectedReturn, stepUp]);
   useEffect(() => {
     const s = loadState().sip;
-    if (s) { setMonthly(s.monthly ?? 25000); setYears(s.years ?? 15); setExpectedReturn(s.expectedReturn ?? 13); setStepUp(s.stepUp ?? 10); }
+    if (s) { setMonthly(s.monthly ?? 25000); setYears(s.years ?? 15); setExpectedReturn(s.expectedReturn ?? 13); setStepUp(s.stepUp ?? 10); } _firstLoad.current = false;
   }, []);
 
   const { fvPlain, fvStepUp, invested, investedStepUp, yearly } = useMemo(() => {
@@ -5491,11 +5498,12 @@ function GoalPlannerModule({ onBack }) {
   const [inflation, setInflation] = useState(6);
   const [returnRate, setReturnRate] = useState(12);
 
-  useEffect(() => { saveState({ goal: { goalAmount, years, currentSavings, inflation, returnRate } }); },
+  const _firstLoad = useRef(true);
+  useEffect(() => { if (_firstLoad.current) return; saveState({ goal: { goalAmount, years, currentSavings, inflation, returnRate } }); },
     [goalAmount, years, currentSavings, inflation, returnRate]);
   useEffect(() => {
     const s = loadState().goal;
-    if (s) { setGoalAmount(s.goalAmount ?? 5000000); setYears(s.years ?? 10); setCurrentSavings(s.currentSavings ?? 0); setInflation(s.inflation ?? 6); setReturnRate(s.returnRate ?? 12); }
+    if (s) { setGoalAmount(s.goalAmount ?? 5000000); setYears(s.years ?? 10); setCurrentSavings(s.currentSavings ?? 0); setInflation(s.inflation ?? 6); setReturnRate(s.returnRate ?? 12); } _firstLoad.current = false;
   }, []);
 
   const calc = useMemo(() => {
@@ -5559,10 +5567,12 @@ function GoldModule({ onBack }) {
   const [years, setYears] = useState(8);
   const [goldReturn, setGoldReturn] = useState(9);
 
-  useEffect(() => { saveState({ gold: { amount, years, goldReturn } }); }, [amount, years, goldReturn]);
+  const _firstLoad = useRef(true);
+  useEffect(() => { if (_firstLoad.current) return; saveState({ gold: { amount, years, goldReturn } }); },
+    [amount, years, goldReturn]);
   useEffect(() => {
     const s = loadState().gold;
-    if (s) { setAmount(s.amount ?? 500000); setYears(s.years ?? 8); setGoldReturn(s.goldReturn ?? 9); }
+    if (s) { setAmount(s.amount ?? 500000); setYears(s.years ?? 8); setGoldReturn(s.goldReturn ?? 9); } _firstLoad.current = false;
   }, []);
 
   const calc = useMemo(() => {
@@ -5650,11 +5660,12 @@ function TaxModule({ onBack }) {
   const [crypto, setCrypto] = useState(0);
   const [slab, setSlab] = useState(30);
 
-  useEffect(() => { saveState({ tax: { equityST, equityLT, debt, crypto, slab } }); },
+  const _firstLoad = useRef(true);
+  useEffect(() => { if (_firstLoad.current) return; saveState({ tax: { equityST, equityLT, debt, crypto, slab } }); },
     [equityST, equityLT, debt, crypto, slab]);
   useEffect(() => {
     const s = loadState().tax;
-    if (s) { setEquityST(s.equityST ?? 0); setEquityLT(s.equityLT ?? 200000); setDebt(s.debt ?? 0); setCrypto(s.crypto ?? 0); setSlab(s.slab ?? 30); }
+    if (s) { setEquityST(s.equityST ?? 0); setEquityLT(s.equityLT ?? 200000); setDebt(s.debt ?? 0); setCrypto(s.crypto ?? 0); setSlab(s.slab ?? 30); } _firstLoad.current = false;
   }, []);
 
   const taxes = useMemo(() => {
@@ -5745,14 +5756,40 @@ function PortfolioModule({ onBack }) {
   const [age, setAge] = useState(35);
   const [monthlyInvestable, setMonthlyInvestable] = useState(40000);
 
-  useEffect(() => { saveState({ portfolio: { profile, age, monthlyInvestable } }); },
-    [profile, age, monthlyInvestable]);
+  // Current holdings (in rupees)
+  const [equityHeld, setEquityHeld] = useState(0);
+  const [debtHeld, setDebtHeld]     = useState(0);
+  const [goldHeld, setGoldHeld]     = useState(0);
+  const [cashHeld, setCashHeld]     = useState(0);
+
+  const _firstLoad = useRef(true);
+  useEffect(() => { if (_firstLoad.current) return; saveState({ portfolio: { profile, age, monthlyInvestable, equityHeld, debtHeld, goldHeld, cashHeld } }); },
+    [profile, age, monthlyInvestable, equityHeld, debtHeld, goldHeld, cashHeld]);
   useEffect(() => {
     const s = loadState().portfolio;
-    if (s) { setProfile(s.profile ?? "growth"); setAge(s.age ?? 35); setMonthlyInvestable(s.monthlyInvestable ?? 40000); }
+    if (s) {
+      setProfile(s.profile ?? "growth");
+      setAge(s.age ?? 35);
+      setMonthlyInvestable(s.monthlyInvestable ?? 40000);
+      setEquityHeld(s.equityHeld ?? 0);
+      setDebtHeld(s.debtHeld ?? 0);
+      setGoldHeld(s.goldHeld ?? 0);
+      setCashHeld(s.cashHeld ?? 0);
+    } _firstLoad.current = false;
   }, []);
 
   const allocation = RISK_PROFILES[profile];
+
+  // Suggested profile from age ("100 - age = equity %")
+  const suggestedEquity = Math.max(30, Math.min(90, 100 - age));
+  const ageSuggestion = suggestedEquity >= 80 ? "aggressive" : suggestedEquity >= 65 ? "growth" : suggestedEquity >= 45 ? "moderate" : "conservative";
+
+  // Pull cash/debt from FinManager if present
+  const fm = readFinManagerProfile();
+  const pullFromFM = () => {
+    if (!fm) return;
+    if (fm.liquidNetWorth > 0) setCashHeld(Math.round(fm.liquidNetWorth));
+  };
 
   const amounts = {
     equity: monthlyInvestable * allocation.equity / 100,
@@ -5760,6 +5797,22 @@ function PortfolioModule({ onBack }) {
     gold:   monthlyInvestable * allocation.gold / 100,
     cash:   monthlyInvestable * allocation.cash / 100,
   };
+
+  const totalHeld = equityHeld + debtHeld + goldHeld + cashHeld;
+  const currentPct = totalHeld > 0 ? {
+    equity: equityHeld / totalHeld * 100,
+    debt:   debtHeld   / totalHeld * 100,
+    gold:   goldHeld   / totalHeld * 100,
+    cash:   cashHeld   / totalHeld * 100,
+  } : { equity:0, debt:0, gold:0, cash:0 };
+
+  // Rebalance actions (signed rupees: positive = add, negative = trim)
+  const rebalance = totalHeld > 0 ? {
+    equity: Math.round(totalHeld * allocation.equity / 100 - equityHeld),
+    debt:   Math.round(totalHeld * allocation.debt   / 100 - debtHeld),
+    gold:   Math.round(totalHeld * allocation.gold   / 100 - goldHeld),
+    cash:   Math.round(totalHeld * allocation.cash   / 100 - cashHeld),
+  } : { equity:0, debt:0, gold:0, cash:0 };
 
   return (
     <>
@@ -5843,36 +5896,92 @@ function PortfolioModule({ onBack }) {
       </div>
 
       <div className="panel">
-        <h2>Sample reference portfolio</h2>
-        <p>For a 35-year-old salaried professional earning ~₹15 L/year (after insurance + emergency fund are in place).</p>
+        <div style={{display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:12, flexWrap:"wrap"}}>
+          <div>
+            <h2>Your current holdings vs target</h2>
+            <p>Enter what you actually hold across asset classes. We'll compare against your target allocation and tell you exactly how much to shift to rebalance.</p>
+          </div>
+          {fm && (
+            <button className="btn btn-ghost btn-sm" onClick={pullFromFM} title="Pre-fill Cash from FinManager liquid net worth">
+              💼 Pull Cash from FinManager
+            </button>
+          )}
+        </div>
+
+        <div className="form-row">
+          <NumberInput label="Equity (MFs, Stocks, ELSS)" value={equityHeld} onChange={setEquityHeld} placeholder="0" hint="Flexi cap, index, mid/small cap, international" />
+          <NumberInput label="Debt (PPF, EPF, Bonds, FDs)" value={debtHeld} onChange={setDebtHeld} placeholder="0" hint="PPF, EPF, debt funds, fixed deposits" />
+          <NumberInput label="Gold (SGB, Gold ETF, Digital Gold)" value={goldHeld} onChange={setGoldHeld} placeholder="0" />
+          <NumberInput label="Cash (Savings, Liquid Funds)" value={cashHeld} onChange={setCashHeld} placeholder="0" hint={fm ? `FinManager liquid: ${fmtINR(fm.liquidNetWorth, {compact:true})}` : "Bank + wallets + liquid MF"} />
+        </div>
+
+        {totalHeld > 0 ? (
+          <>
+            <div className="result-grid" style={{marginTop: 16}}>
+              <StatCard label="Total Portfolio" value={fmtINR(totalHeld, {compact:true})} variant="brand" />
+              <StatCard label="Current Equity %" value={currentPct.equity.toFixed(0) + "%"} sub={`Target: ${allocation.equity}%`} variant={Math.abs(currentPct.equity - allocation.equity) <= 5 ? "green" : "red"} />
+              <StatCard label="Current Debt %"   value={currentPct.debt.toFixed(0) + "%"}   sub={`Target: ${allocation.debt}%`}   variant={Math.abs(currentPct.debt - allocation.debt) <= 5 ? "green" : "red"} />
+              <StatCard label="Current Gold %"   value={currentPct.gold.toFixed(0) + "%"}   sub={`Target: ${allocation.gold}%`}   variant={Math.abs(currentPct.gold - allocation.gold) <= 5 ? "green" : "red"} />
+              <StatCard label="Current Cash %"   value={currentPct.cash.toFixed(0) + "%"}   sub={`Target: ${allocation.cash}%`}   variant={Math.abs(currentPct.cash - allocation.cash) <= 5 ? "green" : "red"} />
+            </div>
+
+            <h3 style={{marginTop: 24}}>Rebalance actions</h3>
+            <div style={{display:"grid", gap:8, marginTop:10}}>
+              {[
+                { label: "Equity", amt: rebalance.equity, color: "brand" },
+                { label: "Debt",   amt: rebalance.debt,   color: "red" },
+                { label: "Gold",   amt: rebalance.gold,   color: "accent" },
+                { label: "Cash",   amt: rebalance.cash,   color: "green" },
+              ].map((r, i) => {
+                const aligned = Math.abs(r.amt) < totalHeld * 0.02; // within 2% of target
+                return (
+                  <div key={i} style={{
+                    display:"grid", gridTemplateColumns:"140px 1fr auto", gap:12, alignItems:"center",
+                    padding:"10px 14px", background:"var(--bg-alt)",
+                    borderRadius:8, border:"1px solid var(--rule)",
+                    borderLeft: `4px solid var(--${r.color})`
+                  }}>
+                    <div style={{fontWeight:600}}>{r.label}</div>
+                    <div className="muted" style={{fontSize:"0.85rem"}}>
+                      {aligned
+                        ? "✓ On target — no action needed"
+                        : r.amt > 0
+                          ? `Add ${fmtINR(r.amt, {compact:true})} to this bucket`
+                          : `Trim ${fmtINR(-r.amt, {compact:true})} from this bucket`}
+                    </div>
+                    <div style={{fontWeight:700, color: aligned ? "var(--green)" : r.amt > 0 ? "var(--brand)" : "var(--red)", whiteSpace:"nowrap"}}>
+                      {aligned ? "✓" : (r.amt > 0 ? "+" : "") + fmtINR(r.amt, {compact:true})}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+          <Callout title="Enter your current holdings above" variant="brand">
+            Once you fill in what you hold across Equity, Debt, Gold, and Cash, we'll show you the gap against your target allocation and the exact rupee amount to shift.
+          </Callout>
+        )}
+      </div>
+
+      <div className="panel">
+        <h2>Age-based guidance &amp; discipline</h2>
         <div className="grid-2">
-          <ChartWrap
-            deps={[]}
-            renderChart={(canvas) => new Chart(canvas, {
-              type: "doughnut",
-              data: {
-                labels: SAMPLE_PORTFOLIO.map(p => p.label),
-                datasets: [{
-                  data: SAMPLE_PORTFOLIO.map(p => p.pct),
-                  backgroundColor: SAMPLE_PORTFOLIO.map(p => p.color),
-                  borderWidth: 2, borderColor: "#FFFFFF"
-                }]
-              },
-              options: {
-                responsive: true, maintainAspectRatio: false,
-                cutout: "55%",
-                plugins: {
-                  legend: { position: "bottom", labels: { font: { family: "Calibri", size: 10 }, color: "#0F1B2D", padding: 8, boxWidth: 14 } }
-                }
-              }
-            })}
-          />
+          <div>
+            <Callout title={`"100 − age" rule → ${suggestedEquity}% equity`} variant="accent">
+              A classic starting heuristic for a {age}-year-old: about <strong>{suggestedEquity}% in equity</strong>, with the balance across debt, gold, and cash. Matches the <strong>{ageSuggestion}</strong> profile above.
+              {profile !== ageSuggestion && <> You've picked <strong>{allocation.label}</strong> — that's fine if it matches your risk appetite, just be intentional.</>}
+            </Callout>
+            <Callout title="Increase SIPs 10% yearly" variant="green">
+              Every salary hike: raise your SIP first, then lifestyle. Every bonus: split into three — emergency top-up, lump-sum investment, and a small indulgence.
+            </Callout>
+          </div>
           <div>
             <Callout title="Rebalance once a year" variant="brand">
               If gold has grown from 10% to 15% of your portfolio, sell the extra 5% and buy whatever is lagging (usually equity). This forces "sell high, buy low" automatically.
             </Callout>
-            <Callout title="Increase SIPs 10% yearly" variant="green">
-              Every salary hike: raise your SIP first, then lifestyle. Every bonus: split into three — emergency top-up, lump-sum investment, and a small indulgence.
+            <Callout title="Emergency fund first" variant="red">
+              None of this allocation matters if you don't have 6 months of expenses in cash-equivalents. Finish the Emergency Fund module before chasing equity returns.
             </Callout>
           </div>
         </div>
