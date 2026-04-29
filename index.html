@@ -1286,61 +1286,52 @@ function PageDashboard({data,setPage}){
 
   return(
     <div className="page">
-      {/* HERO */}
-      <div className="hero">
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',position:'relative',zIndex:1}}>
-          <div>
-            <div className="hero-label">Fund Balance · Bank + FD</div>
-            <div className="hero-amount">{fmtINR(bankBal+fdBal)}</div>
-            <div style={{fontSize:11.5,opacity:.5,marginTop:2,fontFamily:'var(--m)'}}>{fmtINR(bankBal+fdBal,true)} total</div>
-            <div className="hero-sub">Liquid: {fmtINR(liquid)} · FD: {fmtINR(fdBal,true)} · Period: {periodLabel(profile.periodStart,profile.periodEnd)}</div>
-          </div>
-          <div style={{textAlign:'right'}}>
-            <div style={{fontSize:10,opacity:.6,textTransform:'uppercase',letterSpacing:.5,marginBottom:3}}>Net Worth</div>
-            <div style={{fontFamily:'var(--m)',fontSize:22,fontWeight:800,color:'#6ee7b7'}}>{fmtINR(netWorth)}</div>
-            <div style={{fontSize:10,opacity:.4,fontFamily:'var(--m)',marginTop:1}}>{fmtINR(netWorth,true)}</div>
-            <div style={{fontSize:10,opacity:.5,marginTop:2}}>Assets − Liabilities − Provisions</div>
-          </div>
-        </div>
-        <div className="hero-pills">
-          {[
-            {l:'Period Income',v:fmtINR(totalInc,true),c:'gr'},{l:'Period Expense',v:fmtINR(totalExp,true),c:'rd'},
-            {l:'Surplus',v:fmtINR(surplus,true),c:surplus>=0?'gr':'rd'},{l:'FD Value',v:fmtINR(fdBal,true),c:'yw'},
-            {l:'Loan O/S',v:fmtINR(loanOS,true),c:'rd'},{l:'CC Liability',v:fmtINR(ccPay+ccProv,true),c:'rd'},{l:'Provisions',v:fmtINR(provTotal,true),c:'rd'},
-          ].map(p=>(
-            <div key={p.l} className="hero-pill">
-              <div className="hero-pill-label">{p.l}</div>
-              <div className={`hero-pill-val ${p.c}`}>{p.v}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* FUND BALANCE TILE */}
+      {/* HERO — single unified block */}
       {(()=>{
-        const fundBalance=bankBal+fdBal-(ccPay+ccProv)-provTotal;
-        const fdMinusLiab=fdBal-(ccPay+ccProv)-provTotal;
+        const fundBal=liquid+fdBal-(ccPay+ccProv)-provTotal; // Bank+Cash+Wallet+FD − CC − Provisions
+        const fundColor=fundBal>=0?'#6ee7b7':'#fca5a5';
+        const assetBreakdown=[
+          {l:'Bank',v:bankBal,c:'#93c5fd'},
+          {l:'Cash & Wallet',v:cashBal,c:'#86efac'},
+          {l:'Fixed Deposit',v:fdBal,c:'#fcd34d'},
+          {l:'CC Liability',v:-(ccPay+ccProv),c:ccPay+ccProv>0?'#fca5a5':'#6ee7b7'},
+          {l:'Provisions',v:-provTotal,c:provTotal>0?'#fdba74':'#6ee7b7'},
+        ];
+        const periodBreakdown=[
+          {l:'Period Income',v:fmtINR(totalInc,true),c:'gr'},
+          {l:'Period Expense',v:fmtINR(totalExp,true),c:'rd'},
+          {l:'Surplus',v:fmtINR(Math.abs(surplus),true),c:surplus>=0?'gr':'rd'},
+          {l:'Loan O/S',v:fmtINR(loanOS,true),c:'rd'},
+          {l:'Net Worth',v:fmtINR(netWorth,true),c:netWorth>=0?'gr':'rd'},
+        ];
         return(
-          <div className="mb3" style={{background:'linear-gradient(135deg,#1a2e1a 0%,#14532d 50%,#166534 100%)',borderRadius:'var(--r16)',padding:'18px 22px',color:'#fff',display:'flex',alignItems:'center',gap:24,flexWrap:'wrap',position:'relative',overflow:'hidden',boxShadow:'var(--lg)'}}>
-            <div style={{position:'absolute',right:-30,top:-30,width:130,height:130,background:'rgba(255,255,255,.05)',borderRadius:'50%'}}/>
-            <div style={{position:'absolute',right:60,bottom:-50,width:100,height:100,background:'rgba(0,179,134,.08)',borderRadius:'50%'}}/>
-            <div style={{flex:'0 0 auto',width:42,height:42,borderRadius:12,background:'rgba(110,231,183,.15)',border:'1.5px solid rgba(110,231,183,.3)',display:'grid',placeItems:'center',zIndex:1}}>
-              <Ic n="bank" s={20} c="#6ee7b7"/>
+          <div className="hero mb3">
+            {/* Top row */}
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',position:'relative',zIndex:1,flexWrap:'wrap',gap:16}}>
+              {/* Left: Net Fund Balance */}
+              <div>
+                <div className="hero-label">Net Fund Balance · Bank + Cash + FD − CC − Provisions</div>
+                <div className="hero-amount" style={{color:fundColor}}>{fmtINR(fundBal)}</div>
+                <div style={{fontSize:11,opacity:.55,marginTop:4,fontFamily:'var(--m)'}}>{fmtINR(fundBal,true)} · {periodLabel(profile.periodStart,profile.periodEnd)}</div>
+              </div>
+              {/* Right: asset breakdown chips */}
+              <div style={{display:'flex',gap:16,flexWrap:'wrap',alignItems:'flex-start'}}>
+                {assetBreakdown.map(a=>(
+                  <div key={a.l} style={{textAlign:'right'}}>
+                    <div style={{fontSize:9,opacity:.5,textTransform:'uppercase',letterSpacing:.6,marginBottom:2}}>{a.l}</div>
+                    <div style={{fontFamily:'var(--m)',fontSize:13,fontWeight:700,color:a.c}}>{a.v<0?`−${fmtINR(-a.v,true)}`:fmtINR(a.v,true)}</div>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div style={{zIndex:1}}>
-              <div style={{fontSize:10,opacity:.6,textTransform:'uppercase',letterSpacing:.8,marginBottom:3}}>Net Fund Balance · FD + Bank − CC Liability − Provisions</div>
-              <div style={{fontFamily:'var(--m)',fontSize:28,fontWeight:800,letterSpacing:'-1px',lineHeight:1,color:fundBalance>=0?'#6ee7b7':'#fca5a5'}}>{fmtINR(fundBalance)}</div>
-              <div style={{fontSize:11,opacity:.55,marginTop:4,fontFamily:'var(--m)'}}>{fmtINR(fundBalance,true)}</div>
-            </div>
-            <div style={{display:'flex',gap:20,marginLeft:'auto',flexWrap:'wrap',zIndex:1}}>
-              {[
-                {l:'FD Value',v:fdBal,c:'#6ee7b7'},{l:'Bank Balance',v:bankBal,c:'#93c5fd'},
-                {l:'CC Liability',v:-(ccPay+ccProv),c:ccPay+ccProv>0?'#fca5a5':'#6ee7b7'},
-                {l:'Provisions',v:-provTotal,c:provTotal>0?'#fcd34d':'#6ee7b7'},
-              ].map(p=>(
-                <div key={p.l} style={{textAlign:'right'}}>
-                  <div style={{fontSize:9.5,opacity:.5,textTransform:'uppercase',letterSpacing:.5,marginBottom:2}}>{p.l}</div>
-                  <div style={{fontFamily:'var(--m)',fontSize:13,fontWeight:700,color:p.c}}>{p.v<0?`−${fmtINR(-p.v,true)}`:fmtINR(p.v,true)}</div>
+            {/* Divider */}
+            <div style={{height:1,background:'rgba(255,255,255,.08)',margin:'14px 0',position:'relative',zIndex:1}}/>
+            {/* Bottom: period pills */}
+            <div className="hero-pills" style={{marginTop:0}}>
+              {periodBreakdown.map(p=>(
+                <div key={p.l} className="hero-pill">
+                  <div className="hero-pill-label">{p.l}</div>
+                  <div className={`hero-pill-val ${p.c}`}>{p.v}</div>
                 </div>
               ))}
             </div>
