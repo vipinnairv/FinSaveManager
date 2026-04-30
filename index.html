@@ -3465,16 +3465,17 @@ function PageCFO({data}){
   const totalExp=periodTxs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
   const surplus=totalInc-totalExp;
   const savingsRate=totalInc>0?(surplus/totalInc*100):0;
-  const avgMonthlyExp=months.length>0?totalExp/months.length:0;
-  const avgMonthlyInc=months.length>0?totalInc/months.length:0;
   const today=new Date();
   const periodStartDate=new Date(profile.periodStart+'-01');
   const [pey,pem]=profile.periodEnd.split('-').map(Number);
   const periodEndDate=new Date(pey,pem,0); // last day of periodEnd month
   const effectiveDate=today<=periodEndDate?today:periodEndDate;
   const daysElapsed=Math.max(1,Math.round((effectiveDate-periodStartDate)/86400000));
+  // Use days-elapsed basis (same as burn rate) so partial-year periods aren't diluted
   const avgDailyBurnRate=totalExp/daysElapsed;
   const burnRate=avgDailyBurnRate*30; // avg monthly burn
+  const avgMonthlyInc=totalInc/daysElapsed*30;   // consistent with burn rate formula
+  const avgMonthlyExp=totalExp/daysElapsed*30;   // consistent with burn rate formula
   const liquidRunway=burnRate>0?liquid/burnRate:99;             // Bank+Cash+Wallet only
   const fundRunway=burnRate>0?(liquid+fdBal)/burnRate:99;       // +FD (breakable in emergency)
   const runway=fundRunway;                                       // used for health score & KPI
