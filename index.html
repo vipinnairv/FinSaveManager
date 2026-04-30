@@ -1683,13 +1683,15 @@ function PageTx({data,setData,toast,type}){
   const color=isInc?'var(--gd)':'var(--r)';
   const months=useMemo(()=>getPeriodMonths(profile.periodStart,profile.periodEnd),[profile.periodStart,profile.periodEnd]);
   const [selM,setSelM]=useState('all');
+  const [selPM,setSelPM]=useState('all');
   const ef={date:new Date().toISOString().slice(0,10),category:'',desc:'',amount:'',paymentMode:''};
   const [form,setForm]=useState(ef);
   const [eid,setEid]=useState(null);
   const [sel,setSel]=useState(new Set());
   const fileRef=useRef();
 
-  const filtered=useMemo(()=>[...transactions.filter(t=>t.type===type&&(selM==='all'||t.month===selM))].sort((a,b)=>new Date(b.date)-new Date(a.date)),[transactions,type,selM]);
+  const filtered=useMemo(()=>[...transactions.filter(t=>t.type===type&&(selM==='all'||t.month===selM)&&(selPM==='all'||t.paymentMode===selPM))].sort((a,b)=>new Date(b.date)-new Date(a.date)),[transactions,type,selM,selPM]);
+  const pmOptions=useMemo(()=>[...new Set(transactions.filter(t=>t.type===type&&(selM==='all'||t.month===selM)&&t.paymentMode).map(t=>t.paymentMode))].sort(),[transactions,type,selM]);
   const total=filtered.reduce((s,t)=>s+t.amount,0);
   const allSel=filtered.length>0&&sel.size===filtered.length;
 
@@ -1804,9 +1806,14 @@ function PageTx({data,setData,toast,type}){
       )}
       {/* Month filter */}
       <div className="mbar">
-        <div className={`mchip ${selM==='all'?'on':''}`} onClick={()=>setSelM('all')}>All</div>
-        {months.map(m=><div key={m.key} className={`mchip ${selM===m.key?'on':''}`} onClick={()=>setSelM(m.key)}>{m.label}</div>)}
+        <div className={`mchip ${selM==='all'?'on':''}`} onClick={()=>{setSelM('all');setSelPM('all');}}>All Months</div>
+        {months.map(m=><div key={m.key} className={`mchip ${selM===m.key?'on':''}`} onClick={()=>{setSelM(m.key);setSelPM('all');}}>{m.label}</div>)}
       </div>
+      {/* Payment mode filter */}
+      {pmOptions.length>0&&<div className="mbar" style={{marginBottom:10}}>
+        <div className={`mchip ${selPM==='all'?'on':''}`} onClick={()=>setSelPM('all')} style={{fontSize:11}}>All Modes</div>
+        {pmOptions.map(pm=><div key={pm} className={`mchip ${selPM===pm?'on':''}`} onClick={()=>setSelPM(pm)} style={{fontSize:11}}><span className={`pm-badge ${pmClass(pm)}`} style={{pointerEvents:'none'}}>{pm}</span></div>)}
+      </div>}
       <div className="tw">
         <table>
           <thead><tr>
@@ -1819,10 +1826,10 @@ function PageTx({data,setData,toast,type}){
               <tr key={t.id} className={`cb-row ${sel.has(t.id)?'sel':''}`} style={{background:eid===t.id?'var(--gl)':''}}>
                 <td><input type="checkbox" checked={sel.has(t.id)} onChange={()=>toggleOne(t.id)}/></td>
                 <td style={{fontFamily:'var(--m)',fontSize:12}}>{fmtDate(t.date)}</td>
-                <td><span className="tag tx">{fmtMonth(t.month)}</span></td>
+                <td><span className="tag tx" style={{cursor:'pointer'}} onClick={()=>setSelM(t.month)} title="Filter by this month">{fmtMonth(t.month)}</span></td>
                 <td style={{fontSize:12.5}}>{t.category}</td>
                 <td style={{fontSize:12,color:'var(--n500)'}}>{t.desc}</td>
-                <td>{t.paymentMode?<span className={`pm-badge ${pmClass(t.paymentMode)}`}>{t.paymentMode}</span>:'–'}</td>
+                <td>{t.paymentMode?<span className={`pm-badge ${pmClass(t.paymentMode)}`} style={{cursor:'pointer'}} onClick={()=>setSelPM(t.paymentMode)} title="Filter by this mode">{t.paymentMode}</span>:'–'}</td>
                 <td className={`num ${isInc?'pos':'neg'}`}>{fmtINR(t.amount)}</td>
                 <td><div style={{display:'flex',gap:4}}><button className="bic" onClick={()=>startEdit(t)}><Ic n="edit" s={11}/></button><button className="bic red" onClick={()=>del(t.id)}><Ic n="del" s={11}/></button></div></td>
               </tr>
@@ -1842,7 +1849,8 @@ function PageBudget({data,setData,toast}){
   const {transactions,budgetLimits,expenseCategories,profile}=data;
   const [mode,setMode]=useState('monthly');
   const months=useMemo(()=>getPeriodMonths(profile.periodStart,profile.periodEnd),[profile.periodStart,profile.periodEnd]);
-  const [selM,setSelM]=useState(months[months.length-2]?.key||months[0]?.key||'');
+  const _curMK=`${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
+  const [selM,setSelM]=useState(months.find(m=>m.key===_curMK)?.key||months[months.length-1]?.key||months[0]?.key||'');
 
   const getActual=cat=>transactions.filter(t=>t.type==='expense'&&t.category===cat&&(mode==='monthly'?t.month===selM:months.some(m=>m.key===t.month))).reduce((s,t)=>s+t.amount,0);
   const getBudget=cat=>mode==='monthly'?(budgetLimits[cat]||0):(budgetLimits[cat]||0)*months.length;
