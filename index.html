@@ -4,6 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>MyeeCFO – by Vipin Nair</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%2300b386'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial,sans-serif' font-weight='900' font-size='38' fill='white'>₹</text></svg>"/>
 <meta name="description" content="Personal Fund & Budget Manager with Google Drive sync"/>
 <!-- Google Identity Services (for OAuth2 login) -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -265,30 +266,19 @@ tbody tr:hover td{background:#fafbfc}
 .page>*{animation:fadein .2s ease both}
 @media(max-width:1280px){.g4{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:960px){.g3{grid-template-columns:1fr 1fr}.g2{grid-template-columns:1fr}}
-/* ── MOBILE BOTTOM NAV ──────────────────────────────────────── */
-.mob-nav{display:none;position:fixed;bottom:0;left:0;right:0;height:58px;background:var(--W);border-top:1.5px solid var(--n200);z-index:300;align-items:stretch;box-shadow:0 -2px 12px rgba(0,0,0,.08)}
-.mob-nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:9px;font-weight:700;color:var(--n400);cursor:pointer;border:none;background:none;padding:4px 0;letter-spacing:.2px;transition:color .15s}
-.mob-nav-item.on{color:var(--g)}
-.mob-drawer{display:none;position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.45)}
-.mob-drawer-panel{position:absolute;bottom:0;left:0;right:0;background:var(--W);border-radius:var(--r16) var(--r16) 0 0;padding:16px 0 80px;max-height:82vh;overflow-y:auto}
-.mob-drawer-item{display:flex;align-items:center;gap:10px;padding:11px 20px;font-size:13px;font-weight:600;color:var(--n700);cursor:pointer;border:none;background:none;width:100%;text-align:left}
-.mob-drawer-item.on{color:var(--g);background:var(--gl)}
-.mob-drawer-group{font-size:9.5px;font-weight:800;color:var(--n400);text-transform:uppercase;letter-spacing:.6px;padding:10px 20px 4px}
-/* ── RESPONSIVE BREAKPOINTS ─────────────────────────────────── */
-@media(max-width:768px){
-  :root{--sb:0px}
-  .sb{display:none}
-  .mob-nav{display:flex}
-  .mob-drawer{display:block}
-  .page{padding:12px 12px 80px}
+/* ── RESPONSIVE BREAKPOINTS (sidebar always visible) ────────── */
+@media(max-width:1100px){
+  .page{padding:14px 14px 100px}
   .g4{grid-template-columns:1fr 1fr}
   .g3{grid-template-columns:1fr 1fr}
-  .g2{grid-template-columns:1fr}
-  .f3,.f4{grid-template-columns:1fr 1fr}
   .tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
   .ph{flex-wrap:wrap;gap:8px}
+}
+@media(max-width:768px){
+  .g4,.g3{grid-template-columns:1fr 1fr}
+  .g2{grid-template-columns:1fr}
+  .f3,.f4{grid-template-columns:1fr 1fr}
   .topbar{padding:8px 12px}
-  .main{padding-bottom:0}
 }
 @media(max-width:480px){
   .g4,.g3{grid-template-columns:1fr}
@@ -1039,6 +1029,66 @@ const SEED={
 ══════════════════════════════════════ */
 const uid=()=>Math.random().toString(36).slice(2,9);
 
+/* ── CSV UTILITIES ─────────────────────────────────────────────
+   parseCSVLine : handles quoted fields with embedded commas/quotes
+   normalizeDate: accepts any common date format → YYYY-MM-DD
+   flexCol      : resolve column value by multiple alias names
+──────────────────────────────────────────────────────────────── */
+const parseCSVLine=(line)=>{
+  const res=[];let cur='';let inQ=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(ch==='"'){if(inQ&&line[i+1]==='"'){cur+='"';i++;}else inQ=!inQ;}
+    else if(ch===','&&!inQ){res.push(cur.trim());cur='';}
+    else cur+=ch;
+  }
+  res.push(cur.trim());
+  return res;
+};
+const normalizeDate=(raw)=>{
+  if(!raw)return'';
+  const s=raw.trim().replace(/^["']|["']$/g,'');
+  if(!s)return'';
+  // Already ISO YYYY-MM-DD
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;
+  // DD/MM/YYYY  DD-MM-YYYY  DD.MM.YYYY
+  const dmy=s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+  if(dmy){
+    const[,d,m,y]=dmy;
+    // if "month" part >12 it's actually day (some tools export M/D/Y)
+    if(+m>12)return`${y}-${d.padStart(2,'0')}-${m.padStart(2,'0')}`;
+    return`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+  }
+  // YYYY/MM/DD  YYYY.MM.DD
+  const ymd=s.match(/^(\d{4})[\/\.](\d{1,2})[\/\.](\d{1,2})$/);
+  if(ymd){const[,y,m,d]=ymd;return`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;}
+  // DD-Mon-YYYY  DD Mon YYYY  e.g. 15-Apr-2025  15 Apr 2025
+  const dMonY=s.match(/^(\d{1,2})[\s\-]([A-Za-z]{3,9})[\s\-](\d{4})$/);
+  if(dMonY){
+    const[,d,mon,y]=dMonY;
+    const mn={'jan':1,'feb':2,'mar':3,'apr':4,'may':5,'jun':6,'jul':7,'aug':8,'sep':9,'oct':10,'nov':11,'dec':12};
+    const m=mn[mon.slice(0,3).toLowerCase()];
+    if(m)return`${y}-${String(m).padStart(2,'0')}-${d.padStart(2,'0')}`;
+  }
+  // Mon DD, YYYY  e.g. Apr 15, 2025
+  const monDY=s.match(/^([A-Za-z]{3,9})\s+(\d{1,2}),?\s+(\d{4})$/);
+  if(monDY){
+    const[,mon,d,y]=monDY;
+    const mn={'jan':1,'feb':2,'mar':3,'apr':4,'may':5,'jun':6,'jul':7,'aug':8,'sep':9,'oct':10,'nov':11,'dec':12};
+    const m=mn[mon.slice(0,3).toLowerCase()];
+    if(m)return`${y}-${String(m).padStart(2,'0')}-${d.padStart(2,'0')}`;
+  }
+  // Fallback: try native Date (handles "April 15 2025", ISO with time, etc.)
+  const dt=new Date(s);
+  if(!isNaN(dt.getTime()))return dt.toISOString().slice(0,10);
+  return s; // return as-is; show error downstream
+};
+// Resolve a value from an object using multiple possible key aliases
+const flexCol=(o,...keys)=>{
+  for(const k of keys){const v=o[k.toLowerCase().replace(/[\s_\-]/g,'')];if(v!==undefined&&v!=='')return v;}
+  return'';
+};
+
 // Generate period months dynamically from profile
 function getPeriodMonths(start,end){
   const months=[];
@@ -1194,6 +1244,71 @@ function BarChart({months,incomes,expenses,height=90}){
 
 
 /* ══════════════════════════════════════
+   CHART.JS COMPONENTS
+══════════════════════════════════════ */
+const CHART_COLORS=['#00b386','#3b82f6','#f59e0b','#8b5cf6','#ef4444','#06b6d4','#84cc16','#f43f5e','#6366f1','#fb923c'];
+
+function CJSBar({months,incomes,expenses,height=200}){
+  const ref=useRef();const inst=useRef();
+  useEffect(()=>{
+    if(!ref.current)return;
+    if(inst.current){inst.current.destroy();inst.current=null;}
+    const savings=incomes.map((v,i)=>v-(expenses[i]||0));
+    inst.current=new Chart(ref.current,{
+      type:'bar',
+      data:{
+        labels:months.map(m=>m.label),
+        datasets:[
+          {label:'Income',data:incomes,backgroundColor:'rgba(0,179,134,.75)',borderRadius:5,borderSkipped:false,order:2},
+          {label:'Expense',data:expenses,backgroundColor:'rgba(239,68,68,.65)',borderRadius:5,borderSkipped:false,order:3},
+          {label:'Savings',data:savings,type:'line',borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,.08)',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#3b82f6',fill:true,tension:.35,order:1,yAxisID:'y'},
+        ]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{
+          legend:{position:'bottom',labels:{font:{size:11},boxWidth:11,padding:14}},
+          tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmtINR(ctx.raw,true)}`}}
+        },
+        scales:{
+          y:{beginAtZero:true,ticks:{font:{size:9.5},callback:v=>v>=10000000?`${(v/10000000).toFixed(1)}Cr`:v>=100000?`${(v/100000).toFixed(0)}L`:v>=1000?`${(v/1000).toFixed(0)}K`:`${v}`,maxTicksLimit:6},grid:{color:'rgba(0,0,0,.05)'}},
+          x:{ticks:{font:{size:10}},grid:{display:false}}
+        }
+      }
+    });
+    return()=>{if(inst.current){inst.current.destroy();inst.current=null;}};
+  },[JSON.stringify(months.map(m=>m.key)),JSON.stringify(incomes),JSON.stringify(expenses)]);
+  return <div style={{height}}><canvas ref={ref}/></div>;
+}
+
+function CJSDoughnut({labels,values,colors,height=210,title=''}){
+  const ref=useRef();const inst=useRef();
+  useEffect(()=>{
+    if(!ref.current||!labels.length)return;
+    if(inst.current){inst.current.destroy();inst.current=null;}
+    const total=values.reduce((a,b)=>a+b,0);
+    inst.current=new Chart(ref.current,{
+      type:'doughnut',
+      data:{labels,datasets:[{data:values,backgroundColor:colors,borderWidth:2.5,borderColor:'#fff',hoverBorderColor:'#fff',hoverOffset:6}]},
+      options:{
+        responsive:true,maintainAspectRatio:false,cutout:'66%',
+        plugins:{
+          legend:{display:false},
+          tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${fmtINR(ctx.raw,true)} (${total>0?(ctx.raw/total*100).toFixed(1):0}%)`}}
+        }
+      }
+    });
+    return()=>{if(inst.current){inst.current.destroy();inst.current=null;}};
+  },[JSON.stringify(labels),JSON.stringify(values)]);
+  return <div style={{position:'relative',height}}>
+    <canvas ref={ref}/>
+    {title&&<div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',textAlign:'center',pointerEvents:'none'}}>
+      <div style={{fontSize:9,color:'var(--n400)',fontWeight:600,textTransform:'uppercase',letterSpacing:.5}}>{title}</div>
+    </div>}
+  </div>;
+}
+
+/* ══════════════════════════════════════
    EMERGENCY FUND CARD (Dashboard widget)
 ══════════════════════════════════════ */
 function EfCard({data,accounts,totalExp,months}){
@@ -1320,6 +1435,32 @@ function PageDashboard({data,setPage}){
   const budgetUsed=totalExp;
   const budgetPct=budgetTotal>0?Math.min(100,budgetUsed/budgetTotal*100):0;
 
+  // ── Financial Forecast ──────────────────────────────
+  const avgMonthlySavings=months.length>0?(totalInc-totalExp)/months.length:0;
+  const proj1yr=netWorth+avgMonthlySavings*12;
+  const proj3yr=netWorth+avgMonthlySavings*36;
+  const proj5yr=netWorth+avgMonthlySavings*60;
+  const goals=data.goals||[];
+  const goalForecasts=goals.map(g=>{
+    const remaining=g.targetAmount-(g.currentAmount||0);
+    if(remaining<=0)return{...g,status:'complete',monthsNeeded:0,etaDate:null};
+    if(avgMonthlySavings<=0)return{...g,status:'at-risk',monthsNeeded:null,etaDate:null};
+    const mn=Math.ceil(remaining/avgMonthlySavings);
+    const eta=new Date();eta.setMonth(eta.getMonth()+mn);
+    const tgt=g.targetDate?new Date(g.targetDate):null;
+    return{...g,status:(!tgt||eta<=tgt)?'on-track':'behind',monthsNeeded:mn,etaDate:eta};
+  });
+  const totalEmi=loans.reduce((s,l)=>s+l.emi,0);
+  const debtFreeMonths=avgMonthlySavings>0&&loanOS>0?Math.ceil(loanOS/avgMonthlySavings):null;
+  // Category doughnut data (top 8 + Others)
+  const allCatEntries=Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
+  const doughnutCats=allCatEntries.slice(0,8);
+  const othersAmt=allCatEntries.slice(8).reduce((s,[,v])=>s+v,0);
+  if(othersAmt>0)doughnutCats.push(['Others',othersAmt]);
+  const doughnutLabels=doughnutCats.map(([c])=>c);
+  const doughnutValues=doughnutCats.map(([,v])=>v);
+  const doughnutColors=doughnutLabels.map((_,i)=>CHART_COLORS[i%CHART_COLORS.length]);
+
   return(
     <div className="page">
       {/* HERO — single unified block */}
@@ -1397,14 +1538,11 @@ function PageDashboard({data,setPage}){
       {/* ROW 2: Chart + CC Overview */}
       <div className="row mb3">
         <div className="card col">
-          <div className="sh">
-            <div className="sh-t"><Ic n="pnl" s={14} c="var(--g)"/>Monthly P&amp;L</div>
-            <div style={{display:'flex',gap:8,fontSize:10.5,color:'var(--n500)',alignItems:'center'}}>
-              <span style={{width:10,height:10,borderRadius:2,background:'rgba(0,179,134,.55)',display:'inline-block'}}/>Income
-              <span style={{width:10,height:10,borderRadius:2,background:'rgba(239,68,68,.45)',display:'inline-block'}}/>Expense
-            </div>
+          <div className="sh mb2">
+            <div className="sh-t"><Ic n="pnl" s={14} c="var(--g)"/>Monthly Income · Expense · Savings</div>
+            <span className="tag tx" style={{fontSize:10}}>{months.length} months</span>
           </div>
-          <BarChart months={months} incomes={mInc} expenses={mExp}/>
+          <CJSBar months={months} incomes={mInc} expenses={mExp} height={220}/>
         </div>
 
         <div style={{width:260,flexShrink:0,display:'flex',flexDirection:'column',gap:10}}>
@@ -1474,26 +1612,33 @@ function PageDashboard({data,setPage}){
           )}
         </div>
 
-        {/* Top Expense Categories */}
+        {/* Expense Category Breakdown — doughnut */}
         <div className="card">
-          <div className="sh mb2"><div className="sh-t"><Ic n="exp" s={14} c="var(--g)"/>Top Expense Categories</div><span className="tag tx" style={{fontSize:10}}>{periodLabel(profile.periodStart,profile.periodEnd)}</span></div>
-          {topCats.map(([cat,amt],i)=>{
-            const pct=totalExp>0?amt/totalExp*100:0;
-            const colors=['var(--g)','var(--b)','var(--o)','var(--p)'];
-            return(
-              <div key={cat} style={{marginBottom:12}}>
-                <div style={{display:'flex',justifyContent:'space-between',marginBottom:5}}>
-                  <span style={{fontSize:12.5,color:'var(--n700)',display:'flex',alignItems:'center',gap:7}}>
-                    <span style={{width:8,height:8,borderRadius:2,background:colors[i],display:'inline-block',flexShrink:0}}/>
-                    {cat}
-                  </span>
-                  <span style={{fontFamily:'var(--m)',fontSize:12,fontWeight:600}}>{fmtINR(amt,true)}</span>
-                </div>
-                <div className="prog"><div className="pf" style={{width:`${pct}%`,background:colors[i]}}/></div>
-                <div style={{fontSize:10,color:'var(--n400)',marginTop:3}}>{pct.toFixed(1)}% of total expenses</div>
+          <div className="sh mb2">
+            <div className="sh-t"><Ic n="exp" s={14} c="var(--g)"/>Expense by Category</div>
+            <span className="tag tx" style={{fontSize:10}}>{periodLabel(profile.periodStart,profile.periodEnd)}</span>
+          </div>
+          {doughnutValues.length===0
+            ?<div style={{fontSize:12,color:'var(--n400)',padding:'20px 0',textAlign:'center'}}>No expenses recorded yet.</div>
+            :<div style={{display:'flex',gap:14,alignItems:'flex-start'}}>
+              <div style={{width:170,flexShrink:0}}>
+                <CJSDoughnut labels={doughnutLabels} values={doughnutValues} colors={doughnutColors} height={170} title="Expenses"/>
               </div>
-            );
-          })}
+              <div style={{flex:1,overflowY:'auto',maxHeight:185}}>
+                {doughnutCats.map(([cat,amt],i)=>{
+                  const pct=totalExp>0?amt/totalExp*100:0;
+                  return(
+                    <div key={cat} style={{display:'flex',alignItems:'center',gap:7,marginBottom:7}}>
+                      <span style={{width:8,height:8,borderRadius:2,background:doughnutColors[i],flexShrink:0,display:'inline-block'}}/>
+                      <span style={{flex:1,fontSize:11.5,color:'var(--n700)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{cat}</span>
+                      <span style={{fontFamily:'var(--m)',fontSize:11,fontWeight:700,flexShrink:0}}>{fmtINR(amt,true)}</span>
+                      <span style={{fontSize:10,color:'var(--n400)',width:34,textAlign:'right',flexShrink:0}}>{pct.toFixed(0)}%</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          }
         </div>
       </div>
 
@@ -1507,24 +1652,39 @@ function PageDashboard({data,setPage}){
       <div className="g2 mb3">
         {/* Top Merchants */}
         <div className="card">
-          <div className="sh mb2"><div className="sh-t"><Ic n="exp" s={14} c="var(--p)"/>Top Merchants</div><span className="tag tx" style={{fontSize:10}}>by spend</span></div>
-          {topMerchants.length===0?<div style={{fontSize:12,color:'var(--n400)',padding:'8px 0'}}>No merchant data yet — add a Merchant/Vendor when logging expenses.</div>:topMerchants.map(([m,amt],i)=>{
-            const pct=totalExp>0?amt/totalExp*100:0;
-            const colors=['var(--p)','var(--b)','var(--t)','var(--o)','var(--g)'];
-            return(
-              <div key={m} style={{marginBottom:10}}>
-                <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
-                  <span style={{fontSize:12.5,color:'var(--n700)',display:'flex',alignItems:'center',gap:7}}>
-                    <span style={{width:8,height:8,borderRadius:2,background:colors[i],display:'inline-block',flexShrink:0}}/>
-                    {m}
-                  </span>
-                  <span style={{fontFamily:'var(--m)',fontSize:12,fontWeight:600}}>{fmtINR(amt,true)}</span>
+          <div className="sh mb2">
+            <div className="sh-t"><Ic n="exp" s={14} c="var(--p)"/>Top Merchants</div>
+            <div style={{display:'flex',alignItems:'center',gap:8}}>
+              <span className="tag tx" style={{fontSize:10}}>by spend</span>
+              <button className="btn btn-g btn-sm" onClick={()=>setPage('expense')} style={{fontSize:10,padding:'2px 8px'}}>View →</button>
+            </div>
+          </div>
+          {topMerchants.length===0?<div style={{fontSize:12,color:'var(--n400)',padding:'8px 0'}}>No merchant data yet — add a Merchant/Vendor when logging expenses.</div>:
+          (()=>{
+            // Compute count per merchant
+            const mCnt={};periodTxs.filter(t=>t.type==='expense'&&t.merchant).forEach(t=>{mCnt[t.merchant]=(mCnt[t.merchant]||0)+1;});
+            return topMerchants.map(([m,amt],i)=>{
+              const pct=totalExp>0?amt/totalExp*100:0;
+              const colors=['var(--p)','var(--b)','var(--t)','var(--o)','var(--g)'];
+              const cnt=mCnt[m]||1;
+              return(
+                <div key={m} style={{marginBottom:10}}>
+                  <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                    <span style={{fontSize:12.5,color:'var(--n700)',display:'flex',alignItems:'center',gap:7,fontWeight:600}}>
+                      <span style={{width:8,height:8,borderRadius:2,background:colors[i],display:'inline-block',flexShrink:0}}/>
+                      {m}
+                    </span>
+                    <span style={{fontFamily:'var(--m)',fontSize:12,fontWeight:700}}>{fmtINR(amt,true)}</span>
+                  </div>
+                  <div className="prog"><div className="pf" style={{width:`${pct}%`,background:colors[i]}}/></div>
+                  <div style={{display:'flex',justifyContent:'space-between',fontSize:10,color:'var(--n400)',marginTop:3}}>
+                    <span>{cnt} txn{cnt!==1?'s':''} · avg {fmtINR(amt/cnt,true)}</span>
+                    <span>{pct.toFixed(1)}% of expenses</span>
+                  </div>
                 </div>
-                <div className="prog"><div className="pf" style={{width:`${pct}%`,background:colors[i]}}/></div>
-                <div style={{fontSize:10,color:'var(--n400)',marginTop:3}}>{pct.toFixed(1)}% of expenses</div>
-              </div>
-            );
-          })}
+              );
+            });
+          })()}
         </div>
         {/* Goals Snapshot */}
         <div className="card">
@@ -1549,6 +1709,84 @@ function PageDashboard({data,setPage}){
           })}
         </div>
       </div>
+      {/* ROW 5: Financial Forecast */}
+      <div className="card mb3">
+        <div className="sh mb3">
+          <div className="sh-t"><Ic n="budget" s={14} c="var(--b)"/>Financial Forecast</div>
+          <div style={{display:'flex',gap:8,alignItems:'center'}}>
+            <span style={{fontSize:11,color:'var(--n500)'}}>Avg monthly savings: </span>
+            <span style={{fontFamily:'var(--m)',fontSize:12,fontWeight:700,color:avgMonthlySavings>=0?'var(--g)':'var(--r)'}}>{avgMonthlySavings>=0?'+':''}{fmtINR(avgMonthlySavings,true)}/mo</span>
+          </div>
+        </div>
+        {/* Net Worth Projections */}
+        <div className="g3 mb3">
+          {[{l:'Net Worth Today',v:netWorth,sub:'Current snapshot',c:netWorth>=0?'var(--g)':'var(--r)'},
+            {l:'In 1 Year',v:proj1yr,sub:`${avgMonthlySavings>=0?'If you keep saving':'Even reducing debt'}`,c:proj1yr>=0?'var(--b)':'var(--r)'},
+            {l:'In 3 Years',v:proj3yr,sub:'Compound effect',c:proj3yr>=0?'var(--t)':'var(--r)'},
+          ].map(p=>(
+            <div key={p.l} style={{padding:'12px 14px',borderRadius:10,background:'var(--bg)',border:'1.5px solid var(--n150)'}}>
+              <div style={{fontSize:10,color:'var(--n400)',fontWeight:600,textTransform:'uppercase',letterSpacing:.5,marginBottom:4}}>{p.l}</div>
+              <div style={{fontFamily:'var(--m)',fontSize:18,fontWeight:800,color:p.c}}>{fmtINR(p.v,true)}</div>
+              <div style={{fontSize:10.5,color:'var(--n400)',marginTop:3}}>{p.sub}</div>
+            </div>
+          ))}
+        </div>
+        {/* Goal ETAs */}
+        {goalForecasts.length>0&&<div className="mb3">
+          <div style={{fontSize:11,fontWeight:700,color:'var(--n600)',marginBottom:10,textTransform:'uppercase',letterSpacing:.5}}>Goal Forecast</div>
+          <div className="g2">
+            {goalForecasts.map(g=>{
+              const statusColor=g.status==='complete'?'var(--g)':g.status==='on-track'?'var(--b)':g.status==='at-risk'?'var(--n400)':'var(--r)';
+              const statusLabel=g.status==='complete'?'✓ Complete':g.status==='on-track'?'✓ On Track':g.status==='at-risk'?'⚠ No Savings':'⚠ Behind';
+              const etaStr=g.etaDate?g.etaDate.toLocaleString('en-IN',{month:'short',year:'numeric'}):'–';
+              const pct=g.targetAmount>0?Math.min(100,(g.currentAmount||0)/g.targetAmount*100):0;
+              return(
+                <div key={g.id} style={{display:'flex',gap:10,padding:'10px 12px',borderRadius:8,border:'1.5px solid var(--n150)',background:'var(--bg)',alignItems:'flex-start'}}>
+                  <div style={{width:34,height:34,borderRadius:8,background:g.color||'var(--gl)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                    <Ic n="budget" s={14} c={g.color||'var(--g)'}/>
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                      <span style={{fontSize:12.5,fontWeight:700,color:'var(--n800)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{g.name}</span>
+                      <span style={{fontSize:10.5,fontWeight:700,color:statusColor,flexShrink:0,marginLeft:6}}>{statusLabel}</span>
+                    </div>
+                    <div className="prog" style={{height:4,marginBottom:5}}><div className="pf" style={{width:`${pct}%`,background:g.color||'var(--g)'}}/></div>
+                    <div style={{display:'flex',justifyContent:'space-between',fontSize:10.5,color:'var(--n400)'}}>
+                      <span>{fmtINR(g.currentAmount||0,true)} of {fmtINR(g.targetAmount,true)}</span>
+                      <span style={{color:'var(--n600)',fontWeight:600}}>ETA: {etaStr}{g.monthsNeeded?` · ${g.monthsNeeded}mo`:''}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>}
+        {/* Debt-free + Savings rate insights */}
+        <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+          {debtFreeMonths&&<div style={{padding:'8px 14px',borderRadius:8,background:'var(--rl)',border:'1.5px solid rgba(239,68,68,.2)',display:'flex',gap:8,alignItems:'center'}}>
+            <Ic n="loan" s={13} c="var(--r)"/>
+            <div>
+              <div style={{fontSize:10,color:'var(--r)',fontWeight:700,textTransform:'uppercase',letterSpacing:.4}}>Debt-free estimate</div>
+              <div style={{fontSize:12,fontWeight:700,color:'var(--n700)'}}>{debtFreeMonths<=120?`~${debtFreeMonths} months`:'Over 10 years'} <span style={{color:'var(--n400)',fontWeight:400,fontSize:10.5}}>at current savings rate</span></div>
+            </div>
+          </div>}
+          {avgMonthlySavings>0&&<div style={{padding:'8px 14px',borderRadius:8,background:'var(--gl)',border:'1.5px solid rgba(0,179,134,.2)',display:'flex',gap:8,alignItems:'center'}}>
+            <Ic n="inc" s={13} c="var(--g)"/>
+            <div>
+              <div style={{fontSize:10,color:'var(--g)',fontWeight:700,textTransform:'uppercase',letterSpacing:.4}}>5-year wealth</div>
+              <div style={{fontSize:12,fontWeight:700,color:'var(--n700)'}}>{fmtINR(proj5yr,true)} <span style={{color:'var(--n400)',fontWeight:400,fontSize:10.5}}>at {fmtINR(avgMonthlySavings,true)}/mo</span></div>
+            </div>
+          </div>}
+          {totalEmi>0&&<div style={{padding:'8px 14px',borderRadius:8,background:'var(--bl)',border:'1.5px solid rgba(59,130,246,.2)',display:'flex',gap:8,alignItems:'center'}}>
+            <Ic n="exp" s={13} c="var(--b)"/>
+            <div>
+              <div style={{fontSize:10,color:'var(--b)',fontWeight:700,textTransform:'uppercase',letterSpacing:.4}}>Monthly EMI load</div>
+              <div style={{fontSize:12,fontWeight:700,color:'var(--n700)'}}>{fmtINR(totalEmi,true)}/mo <span style={{color:'var(--n400)',fontWeight:400,fontSize:10.5}}>{totalInc>0?`${(totalEmi/totalInc*months.length*100).toFixed(1)}% of income`:''}</span></div>
+            </div>
+          </div>}
+        </div>
+      </div>
+
       {/* ROW 4: Loan Snapshot */}
       <div className="card">
         <div className="sh mb2"><div className="sh-t"><Ic n="loan" s={14} c="var(--g)"/>Loan Snapshot</div><span className="tag tr">Total O/S: {fmtINR(loanOS,true)}</span></div>
@@ -1596,13 +1834,21 @@ function PageFund({data,setData,toast}){
     const f=e.target.files[0];if(!f)return;
     const r=new FileReader();
     r.onload=ev=>{
-      const lines=ev.target.result.split('\n').filter(l=>l.trim());
-      const hdr=lines[0].toLowerCase().split(',').map(h=>h.trim().replace(/"/g,''));
+      const raw=ev.target.result.replace(/\r/g,'');
+      const lines=raw.split('\n').filter(l=>l.trim());
+      if(lines.length<2){toast('CSV empty','r');return;}
+      const hdr=parseCSVLine(lines[0]).map(h=>h.replace(/"/g,'').trim().toLowerCase().replace(/[\s_\-]/g,''));
+      const ca=(...aliases)=>(cols)=>{for(const a of aliases){const i=hdr.indexOf(a.toLowerCase().replace(/[\s_\-]/g,''));if(i>=0&&cols[i])return cols[i];}return'';};
+      const getName=ca('name','accountname','bankname','account');
+      const getType=ca('type','accounttype','category');
+      const getAccNo=ca('accno','accountnumber','acno','number','accountno');
+      const getBal=ca('balance','amount','bal','openingbalance');
+      const getColor=ca('color','colour');
       const accs=lines.slice(1).map(line=>{
-        const cols=line.split(',').map(c=>c.trim().replace(/"/g,''));
-        const o={};hdr.forEach((h,i)=>o[h]=cols[i]||'');
-        if(!o.name)return null;
-        return{id:uid(),name:o.name,type:o.type||'bank',accNo:o.accno||o['acc no']||o['account number']||'XXXX-0000',balance:parseFloat(o.balance)||0,color:o.color||'#1a4a6e'};
+        if(!line.trim())return null;
+        const cols=parseCSVLine(line);
+        const name=getName(cols);if(!name)return null;
+        return{id:uid(),name,type:getType(cols)||'bank',accNo:getAccNo(cols)||'XXXX-0000',balance:parseFloat(getBal(cols).replace(/[,₹\s]/g,''))||0,color:getColor(cols)||'#1a4a6e'};
       }).filter(Boolean);
       setData(d=>({...d,accounts:[...d.accounts,...accs]}));
       toast(`Imported ${accs.length} accounts`,'g');
@@ -1767,14 +2013,17 @@ function PageTx({data,setData,toast,type}){
   const months=useMemo(()=>getPeriodMonths(profile.periodStart,profile.periodEnd),[profile.periodStart,profile.periodEnd]);
   const [selM,setSelM]=useState('all');
   const [selPM,setSelPM]=useState('all');
+  const [selMerchant,setSelMerchant]=useState('all');
+  const [showAllMerchants,setShowAllMerchants]=useState(false);
   const ef={date:new Date().toISOString().slice(0,10),category:'',desc:'',amount:'',paymentMode:'',merchant:''};
   const [form,setForm]=useState(ef);
   const [eid,setEid]=useState(null);
   const [sel,setSel]=useState(new Set());
   const fileRef=useRef();
 
-  const filtered=useMemo(()=>[...transactions.filter(t=>t.type===type&&(selM==='all'||t.month===selM)&&(selPM==='all'||t.paymentMode===selPM))].sort((a,b)=>new Date(b.date)-new Date(a.date)),[transactions,type,selM,selPM]);
+  const filtered=useMemo(()=>[...transactions.filter(t=>t.type===type&&(selM==='all'||t.month===selM)&&(selPM==='all'||t.paymentMode===selPM)&&(selMerchant==='all'||t.merchant===selMerchant))].sort((a,b)=>new Date(b.date)-new Date(a.date)),[transactions,type,selM,selPM,selMerchant]);
   const pmOptions=useMemo(()=>[...new Set(transactions.filter(t=>t.type===type&&(selM==='all'||t.month===selM)&&t.paymentMode).map(t=>t.paymentMode))].sort(),[transactions,type,selM]);
+  const merchantOptions=useMemo(()=>[...new Set(transactions.filter(t=>t.type===type&&(selM==='all'||t.month===selM)&&(selPM==='all'||t.paymentMode===selPM)&&t.merchant).map(t=>t.merchant))].sort(),[transactions,type,selM,selPM]);
   const total=filtered.reduce((s,t)=>s+t.amount,0);
   const allSel=filtered.length>0&&sel.size===filtered.length;
 
@@ -1805,24 +2054,42 @@ function PageTx({data,setData,toast,type}){
     toast('CSV exported','g');
   };
   const downloadTemplate=()=>{
-    const blob=new Blob(['date,type,category,description,amount,paymentMode\n2026-04-01,expense,House Rent,April Rent,20500,NEFT/Bank Transfer\n2026-04-02,income,Consultancy Income (Salary),Salary,75000,NEFT/Bank Transfer'],{type:'text/csv'});
-    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='finmanager-template.csv';a.click();
+    const blob=new Blob(['date,type,category,description,merchant,paymentMode,amount\n01/04/2026,expense,House Rent,April Rent,,NEFT/Bank Transfer,20500\n01/04/2026,income,Salary / Consultancy,April Salary,,NEFT/Bank Transfer,83550\n05/04/2026,expense,Groceries & Food,Monthly groceries,DMart,UPI,4500\n10/04/2026,expense,Entertainment,OTT subscription,Netflix,Credit Card,649\n'],{type:'text/csv'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='myeecfo-transactions-template.csv';a.click();
   };
   const handleCSV=e=>{
     const f=e.target.files[0];if(!f)return;
     const r=new FileReader();
     r.onload=ev=>{
-      const lines=ev.target.result.split('\n').filter(l=>l.trim());
-      const hdr=lines[0].toLowerCase().split(',').map(h=>h.trim().replace(/"/g,''));
+      const raw=ev.target.result.replace(/\r/g,'');
+      const lines=raw.split('\n').filter(l=>l.trim());
+      if(lines.length<2){toast('CSV empty or no data rows','r');return;}
+      const hdrRaw=parseCSVLine(lines[0]);
+      const hdr=hdrRaw.map(h=>h.replace(/"/g,'').trim().toLowerCase().replace(/[\s_\-]/g,''));
+      const ca=(...aliases)=>(cols)=>{for(const a of aliases){const i=hdr.indexOf(a.toLowerCase().replace(/[\s_\-]/g,''));if(i>=0&&cols[i]!==undefined&&cols[i]!=='')return cols[i];}return'';};
+      const getDate=ca('date','transactiondate','txndate','valuedate','postingdate','dt');
+      const getAmt=ca('amount','amt','value','debit','credit','dr','cr','inr','debitamount','creditamount');
+      const getType=ca('type','transactiontype','txntype','flow','drcr');
+      const getCat=ca('category','cat','head','expensehead','expensecategory','categoryname');
+      const getDesc=ca('description','desc','narration','particulars','details','remarks','note','memo','narrative');
+      const getPM=ca('paymentmode','paymentmethod','mode','channel','modeofpayment','paymode','payment');
+      const getMerchant=ca('merchant','vendor','shop','store','merchantname','payee','party');
+      let skipped=0;
       const txs=lines.slice(1).map(line=>{
-        const cols=line.split(',').map(c=>c.trim().replace(/"/g,''));
-        const o={};hdr.forEach((h,i)=>o[h]=cols[i]||'');
-        if(!o.date||!o.amount||!o.type)return null;
-        const amount=parseFloat(o.amount);if(isNaN(amount))return null;
-        return{id:uid(),date:o.date,type:o.type.toLowerCase().trim(),category:o.category||'Other Expense',desc:o.description||o.desc||'',amount,month:o.date.slice(0,7),paymentMode:o.paymentmode||o['payment mode']||''};
+        if(!line.trim())return null;
+        const cols=parseCSVLine(line);
+        const date=normalizeDate(getDate(cols));
+        if(!date||date.length<8){skipped++;return null;}
+        const rawAmt=getAmt(cols).replace(/[,₹\s]/g,'');
+        const amount=parseFloat(rawAmt);
+        if(isNaN(amount)||amount===0){skipped++;return null;}
+        const rawType=getType(cols).toLowerCase();
+        const txType=rawType.includes('inc')||rawType==='cr'||rawType==='credit'?'income':'expense';
+        const cat=getCat(cols)||(txType==='income'?'Other Income':'Other Expense');
+        return{id:uid(),date,type:txType,category:cat,desc:getDesc(cols),amount,month:date.slice(0,7),paymentMode:getPM(cols),merchant:getMerchant(cols)};
       }).filter(Boolean);
       setData(d=>({...d,transactions:[...d.transactions,...txs]}));
-      toast(`Imported ${txs.length} transactions`,'g');
+      toast(`Imported ${txs.length}${skipped?` · ${skipped} skipped`:''}`,'g');
     };
     r.readAsText(f);e.target.value='';
   };
@@ -1830,6 +2097,15 @@ function PageTx({data,setData,toast,type}){
   // Payment mode breakdown
   const pmMap={};filtered.forEach(t=>{const pm=t.paymentMode||'Unknown';pmMap[pm]=(pmMap[pm]||0)+t.amount;});
   const topPM=Object.entries(pmMap).sort((a,b)=>b[1]-a[1]).slice(0,3);
+  // Merchant analytics for current filtered view
+  const merchantAnalytics=useMemo(()=>{
+    const map={};
+    filtered.filter(t=>t.merchant).forEach(t=>{
+      if(!map[t.merchant])map[t.merchant]={amt:0,cnt:0};
+      map[t.merchant].amt+=t.amount;map[t.merchant].cnt++;
+    });
+    return Object.entries(map).sort((a,b)=>b[1].amt-a[1].amt).slice(0,6);
+  },[filtered]);
 
   return(
     <div className="page">
@@ -1851,6 +2127,42 @@ function PageTx({data,setData,toast,type}){
           <div className="card" key={c}><div className="cl">{c}</div><div className="cv" style={{color,fontSize:17}}>{fmtINR(v,true)}</div><div className="cm">{total>0?(v/total*100).toFixed(1):0}% of total</div></div>
         ))}
       </div>
+      {/* Merchant Analytics */}
+      {merchantAnalytics.length>0&&(
+        <div className="card mb3">
+          <div className="sh mb2">
+            <div className="sh-t"><Ic n="exp" s={14} c="var(--p)"/>Merchant Analytics</div>
+            <div style={{display:'flex',alignItems:'center',gap:8}}>
+              {selMerchant!=='all'&&<span className="tag tp" style={{fontSize:10}}>Filtered: {selMerchant}</span>}
+              <span className="tag tx" style={{fontSize:10}}>{merchantAnalytics.length} merchants · current view</span>
+            </div>
+          </div>
+          <div className="g3">
+            {merchantAnalytics.map(([m,{amt,cnt}],i)=>{
+              const clrs=['var(--p)','var(--b)','var(--t)','var(--o)','var(--g)','var(--r)'];
+              const pct=total>0?amt/total*100:0;
+              const active=selMerchant===m;
+              return(
+                <div key={m} style={{cursor:'pointer',padding:'10px 12px',borderRadius:8,border:`1.5px solid ${active?clrs[i%6]:'var(--n150)'}`,background:active?'var(--gl)':'var(--bg)',transition:'all 0.15s'}}
+                  onClick={()=>setSelMerchant(active?'all':m)}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:5}}>
+                    <span style={{fontSize:12.5,fontWeight:700,color:clrs[i%6],display:'flex',alignItems:'center',gap:5}}>
+                      <span style={{width:8,height:8,borderRadius:2,background:clrs[i%6],flexShrink:0,display:'inline-block'}}/>
+                      {m}
+                    </span>
+                    <span style={{fontFamily:'var(--m)',fontSize:12.5,fontWeight:700}}>{fmtINR(amt,true)}</span>
+                  </div>
+                  <div className="prog" style={{height:5,marginBottom:5}}><div className="pf" style={{width:`${pct}%`,background:clrs[i%6]}}/></div>
+                  <div style={{display:'flex',justifyContent:'space-between',fontSize:10,color:'var(--n400)'}}>
+                    <span>{cnt} txn{cnt!==1?'s':''}</span>
+                    <span>{pct.toFixed(1)}% of total</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
       {/* Form */}
       <div className="card mb3">
         <div className="sh mb2">
@@ -1893,14 +2205,36 @@ function PageTx({data,setData,toast,type}){
       )}
       {/* Month filter */}
       <div className="mbar">
-        <div className={`mchip ${selM==='all'?'on':''}`} onClick={()=>{setSelM('all');setSelPM('all');}}>All Months</div>
-        {months.map(m=><div key={m.key} className={`mchip ${selM===m.key?'on':''}`} onClick={()=>{setSelM(m.key);setSelPM('all');}}>{m.label}</div>)}
+        <div className={`mchip ${selM==='all'?'on':''}`} onClick={()=>{setSelM('all');setSelPM('all');setSelMerchant('all');}}>All Months</div>
+        {months.map(m=><div key={m.key} className={`mchip ${selM===m.key?'on':''}`} onClick={()=>{setSelM(m.key);setSelPM('all');setSelMerchant('all');}}>{m.label}</div>)}
       </div>
       {/* Payment mode filter */}
-      {pmOptions.length>0&&<div className="mbar" style={{marginBottom:10}}>
-        <div className={`mchip ${selPM==='all'?'on':''}`} onClick={()=>setSelPM('all')} style={{fontSize:11}}>All Modes</div>
-        {pmOptions.map(pm=><div key={pm} className={`mchip ${selPM===pm?'on':''}`} onClick={()=>setSelPM(pm)} style={{fontSize:11}}><span className={`pm-badge ${pmClass(pm)}`} style={{pointerEvents:'none'}}>{pm}</span></div>)}
+      {pmOptions.length>0&&<div className="mbar" style={{marginBottom:8}}>
+        <div className={`mchip ${selPM==='all'?'on':''}`} onClick={()=>{setSelPM('all');setSelMerchant('all');}} style={{fontSize:11}}>All Modes</div>
+        {pmOptions.map(pm=><div key={pm} className={`mchip ${selPM===pm?'on':''}`} onClick={()=>{setSelPM(pm);setSelMerchant('all');}} style={{fontSize:11}}><span className={`pm-badge ${pmClass(pm)}`} style={{pointerEvents:'none'}}>{pm}</span></div>)}
       </div>}
+      {/* Merchant filter */}
+      {merchantOptions.length>0&&(()=>{
+        const clrs=['var(--p)','var(--b)','var(--t)','var(--o)','var(--g)','var(--r)'];
+        const LIMIT=5;
+        const extra=merchantOptions.length-LIMIT;
+        const visible=showAllMerchants?merchantOptions:merchantOptions.slice(0,LIMIT);
+        // If active merchant is beyond limit, always include it
+        const showSet=new Set(visible);
+        if(selMerchant!=='all'&&!showSet.has(selMerchant))showSet.add(selMerchant);
+        const displayed=[...showSet].sort((a,b)=>merchantOptions.indexOf(a)-merchantOptions.indexOf(b));
+        return(
+          <div style={{display:'flex',flexWrap:'wrap',gap:4,marginBottom:10,overflowX:'unset'}}>
+            <div className={`mchip ${selMerchant==='all'?'on':''}`} onClick={()=>setSelMerchant('all')} style={{fontSize:11}}>🏪 All Merchants</div>
+            {displayed.map(m=>{
+              const ci=merchantOptions.indexOf(m);
+              return(<div key={m} className={`mchip ${selMerchant===m?'on':''}`} onClick={()=>setSelMerchant(selMerchant===m?'all':m)} style={{fontSize:11,display:'flex',alignItems:'center',gap:4}}><span style={{width:7,height:7,borderRadius:2,background:clrs[ci%6],display:'inline-block',flexShrink:0}}/>{m}</div>);
+            })}
+            {!showAllMerchants&&extra>0&&<div className="mchip" onClick={()=>setShowAllMerchants(true)} style={{fontSize:11,fontWeight:700,color:'var(--p)',borderColor:'var(--p)'}}>+{extra} more</div>}
+            {showAllMerchants&&extra>0&&<div className="mchip" onClick={()=>setShowAllMerchants(false)} style={{fontSize:11,fontWeight:700,color:'var(--n500)',borderColor:'var(--n300)'}}>Show less ↑</div>}
+          </div>
+        );
+      })()}
       <div className="tw">
         <table>
           <thead><tr>
@@ -1916,8 +2250,8 @@ function PageTx({data,setData,toast,type}){
                 <td><span className="tag tx" style={{cursor:'pointer'}} onClick={()=>setSelM(t.month)} title="Filter by this month">{fmtMonth(t.month)}</span></td>
                 <td style={{fontSize:12.5}}>{t.category}</td>
                 <td style={{fontSize:12,color:'var(--n500)'}}>{t.desc}</td>
-                <td style={{fontSize:11.5,color:'var(--n600)'}}>{t.merchant||'–'}</td>
-                <td>{t.paymentMode?<span className={`pm-badge ${pmClass(t.paymentMode)}`} style={{cursor:'pointer'}} onClick={()=>setSelPM(t.paymentMode)} title="Filter by this mode">{t.paymentMode}</span>:'–'}</td>
+                <td style={{fontSize:11.5}}>{t.merchant?<span style={{background:'var(--gl)',borderRadius:4,padding:'2px 7px',color:'var(--p)',fontWeight:600,cursor:'pointer'}} onClick={()=>setSelMerchant(selMerchant===t.merchant?'all':t.merchant)} title="Filter by this merchant">{t.merchant}</span>:<span style={{color:'var(--n400)'}}>–</span>}</td>
+                <td>{t.paymentMode?<span className={`pm-badge ${pmClass(t.paymentMode)}`} style={{cursor:'pointer'}} onClick={()=>{setSelPM(t.paymentMode);setSelMerchant('all');}} title="Filter by this mode">{t.paymentMode}</span>:'–'}</td>
                 <td className={`num ${isInc?'pos':'neg'}`}>{fmtINR(t.amount)}</td>
                 <td><div style={{display:'flex',gap:4}}><button className="bic" onClick={()=>startEdit(t)}><Ic n="edit" s={11}/></button><button className="bic red" onClick={()=>del(t.id)}><Ic n="del" s={11}/></button></div></td>
               </tr>
@@ -2058,13 +2392,23 @@ function PageCC({data,setData,toast}){
     const f=e.target.files[0];if(!f)return;
     const r=new FileReader();
     r.onload=ev=>{
-      const lines=ev.target.result.split('\n').filter(l=>l.trim());
-      const hdr=lines[0].toLowerCase().split(',').map(h=>h.trim().replace(/"/g,''));
+      const raw=ev.target.result.replace(/\r/g,'');
+      const lines=raw.split('\n').filter(l=>l.trim());
+      if(lines.length<2){toast('CSV empty','r');return;}
+      const hdr=parseCSVLine(lines[0]).map(h=>h.replace(/"/g,'').trim().toLowerCase().replace(/[\s_\-]/g,''));
+      const ca=(...aliases)=>(cols)=>{for(const a of aliases){const i=hdr.indexOf(a.toLowerCase().replace(/[\s_\-]/g,''));if(i>=0&&cols[i])return cols[i];}return'';};
+      const getBank=ca('bank','bankname','issuer','issuingbank');
+      const getType=ca('type','cardtype','cardname','variant','network');
+      const getAccNo=ca('accno','cardnumber','accountnumber','last4','maskedcard');
+      const getLimit=ca('limit','creditlimit','sanctionedlimit');
+      const getPayable=ca('payable','billed','billedamount','outstanding','amountdue','currentdue');
+      const getProv=ca('provision','unbilled','unbilledamount','spends');
+      const getDue=ca('duedate','paymentduedate','due','duedt');
       const cards=lines.slice(1).map(line=>{
-        const cols=line.split(',').map(c=>c.trim().replace(/"/g,''));
-        const o={};hdr.forEach((h,i)=>o[h]=cols[i]||'');
-        if(!o.bank||!o.type)return null;
-        return{id:uid(),bank:o.bank,type:o.type||o['card type']||'',accNo:o.accno||o['acc no']||o['card number']||'XXXX-0000',limit:parseFloat(o.limit||o['credit limit'])||0,payable:parseFloat(o.payable||o.billed)||0,provision:parseFloat(o.provision||o.unbilled)||0,dueDate:o.duedate||o['due date']||null};
+        if(!line.trim())return null;
+        const cols=parseCSVLine(line);
+        const bank=getBank(cols);if(!bank)return null;
+        return{id:uid(),bank,type:getType(cols)||'Credit Card',accNo:getAccNo(cols)||'XXXX-0000',limit:parseFloat(getLimit(cols).replace(/[,₹\s]/g,''))||0,payable:parseFloat(getPayable(cols).replace(/[,₹\s]/g,''))||0,provision:parseFloat(getProv(cols).replace(/[,₹\s]/g,''))||0,dueDate:normalizeDate(getDue(cols))||null};
       }).filter(Boolean);
       setData(d=>({...d,creditCards:[...d.creditCards,...cards]}));
       toast(`Imported ${cards.length} credit cards`,'g');
@@ -2374,20 +2718,33 @@ function PageLoans({data,setData,toast}){
     const f=e.target.files[0];if(!f)return;
     const r=new FileReader();
     r.onload=ev=>{
-      const lines=ev.target.result.split('\n').filter(l=>l.trim());
-      const hdr=lines[0].toLowerCase().split(',').map(h=>h.trim().replace(/"/g,''));
+      const raw=ev.target.result.replace(/\r/g,'');
+      const lines=raw.split('\n').filter(l=>l.trim());
+      if(lines.length<2){toast('CSV empty','r');return;}
+      const hdr=parseCSVLine(lines[0]).map(h=>h.replace(/"/g,'').trim().toLowerCase().replace(/[\s_\-]/g,''));
+      const ca=(...aliases)=>(cols)=>{for(const a of aliases){const i=hdr.indexOf(a.toLowerCase().replace(/[\s_\-]/g,''));if(i>=0&&cols[i])return cols[i];}return'';};
+      const getBank=ca('bank','lender','bankname','financier');
+      const getType=ca('type','loantype','category');
+      const getOrig=ca('original','loanamount','principal','amount','sanctionedamount');
+      const getOS=ca('outstanding','balance','currentbalance','remainingbalance','os');
+      const getEMI=ca('emi','monthlyemi','instalment','installment');
+      const getROI=ca('roi','rate','interestrate','rateofinterest','interest');
+      const getTen=ca('tenure','tenuremonths','months','termmonths');
+      const getSD=ca('startdate','start','loandate','disbursementdate');
+      const getED=ca('enddate','end','maturitydate','closuredate');
+      const getAccNo=ca('accno','accountnumber','loannumber','acno');
       const lns=lines.slice(1).map(line=>{
-        const cols=line.split(',').map(c=>c.trim().replace(/"/g,''));
-        const o={};hdr.forEach((h,i)=>o[h]=cols[i]||'');
-        if(!o.bank)return null;
-        const orig=parseFloat(o.original||o['loan amount']||o.amount)||0;
-        const os=parseFloat(o.outstanding)||orig;
-        const emi=parseFloat(o.emi)||0;
-        const roi=parseFloat(o.roi||o['rate']||o['interest rate'])||0;
-        const ten=parseInt(o.tenure||o['tenure months'])||60;
-        const sd=o.startdate||o['start date']||'';
-        const ed=o.enddate||o['end date']||calcEnd(sd,ten);
-        return{id:uid(),bank:o.bank,accNo:o.accno||o['acc no']||'XXXX-0000',type:o.type||'Personal Loan',original:orig,outstanding:os,emi,roi,startDate:sd||null,endDate:ed||null,tenure:ten,remaining:calcRem(sd,ten)};
+        if(!line.trim())return null;
+        const cols=parseCSVLine(line);
+        const bank=getBank(cols);if(!bank)return null;
+        const orig=parseFloat(getOrig(cols).replace(/[,₹\s]/g,''))||0;
+        const os=parseFloat(getOS(cols).replace(/[,₹\s]/g,''))||orig;
+        const emi=parseFloat(getEMI(cols).replace(/[,₹\s]/g,''))||0;
+        const roi=parseFloat(getROI(cols))||0;
+        const ten=parseInt(getTen(cols))||60;
+        const sd=normalizeDate(getSD(cols));
+        const ed=normalizeDate(getED(cols))||calcEnd(sd,ten);
+        return{id:uid(),bank,accNo:getAccNo(cols)||'XXXX-0000',type:getType(cols)||'Personal Loan',original:orig,outstanding:os,emi,roi,startDate:sd||null,endDate:ed||null,tenure:ten,phases:[],remaining:calcRem(ed,sd,ten)};
       }).filter(Boolean);
       setData(d=>({...d,loans:[...d.loans,...lns]}));
       toast(`Imported ${lns.length} loans`,'g');
@@ -2516,22 +2873,43 @@ function PageProvision({data,setData,toast}){
     const f=e.target.files[0];if(!f)return;
     const r=new FileReader();
     r.onload=ev=>{
-      const lines=ev.target.result.split('\n').filter(l=>l.trim());
-      const hdr=lines[0].toLowerCase().split(',').map(h=>h.trim().replace(/"/g,''));
+      const raw=ev.target.result.replace(/\r/g,'');
+      const lines=raw.split('\n').filter(l=>l.trim());
+      if(lines.length<2){toast('CSV empty or no data rows','r');return;}
+      const hdrRaw=parseCSVLine(lines[0]);
+      const hdr=hdrRaw.map(h=>h.replace(/"/g,'').trim().toLowerCase().replace(/[\s_\-]/g,''));
+      const ca=(...aliases)=>cols=>{for(const a of aliases){const i=hdr.indexOf(a.toLowerCase().replace(/[\s_\-]/g,''));if(i>=0&&cols[i]!==undefined&&cols[i]!=='')return cols[i];}return'';};
+      const getMonth=ca('month','yearmonth','period','date','txndate','transactiondate');
+      const getEntity=ca('entity','name','person','owner','member','who');
+      const getType=ca('type','category','head','provisiontype','expensetype');
+      const getNarr=ca('narration','description','desc','details','note','remarks','particulars','memo');
+      const getAmt=ca('amount','amt','value','inr','provisionamount');
+      let skipped=0;
       const provs=lines.slice(1).map(line=>{
-        const cols=line.split(',').map(c=>c.trim().replace(/"/g,''));
-        const o={};hdr.forEach((h,i)=>o[h]=cols[i]||'');
-        if(!o.narration&&!o.description)return null;
-        return{id:uid(),month:o.month||new Date().toISOString().slice(0,7),entity:o.entity||'Self',type:o.type||'',narration:o.narration||o.description||'',amount:parseFloat(o.amount)||0};
+        if(!line.trim())return null;
+        const cols=parseCSVLine(line);
+        const narr=getNarr(cols);
+        if(!narr){skipped++;return null;}
+        const rawMonth=getMonth(cols);
+        // Accept full date or YYYY-MM; normalize to YYYY-MM
+        let month=new Date().toISOString().slice(0,7);
+        if(rawMonth){
+          const nd=normalizeDate(rawMonth);
+          if(nd&&nd.length>=7)month=nd.slice(0,7);
+          else if(/^\d{4}-\d{2}$/.test(rawMonth.trim()))month=rawMonth.trim();
+        }
+        const rawAmt=getAmt(cols).replace(/[,₹\s]/g,'');
+        const amount=parseFloat(rawAmt)||0;
+        return{id:uid(),month,entity:getEntity(cols)||'Self',type:getType(cols)||'',narration:narr,amount};
       }).filter(Boolean);
       setData(d=>({...d,provisions:[...d.provisions,...provs]}));
-      toast(`Imported ${provs.length} provisions`,'g');
+      toast(`Imported ${provs.length} provisions${skipped?` · ${skipped} skipped`:''}`,'g');
     };
     r.readAsText(f);e.target.value='';
   };
   const downloadProvTemplate=()=>{
-    const b=new Blob(['month,entity,type,narration,amount\n2026-04,Self,Medical,Annual health checkup,8000\n2026-05,Family,Repair,AC servicing,3500\n'],{type:'text/csv'});
-    const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='finmanager-provision-template.csv';a.click();
+    const b=new Blob(['month,entity,type,narration,amount\n2026-04,Self,Medical,Annual health checkup,8000\n2026-05,Family,Repair,AC servicing,3500\n2026-06,Self,Legal,Property document notarization,5000\n'],{type:'text/csv'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='myeecfo-provision-template.csv';a.click();
   };
   const save=()=>{if(!form.narration)return;if(eid){setData(d=>({...d,provisions:d.provisions.map(p=>p.id===eid?{...p,...form,amount:+form.amount}:p)}));toast('Updated','g');setEid(null);}else{setData(d=>({...d,provisions:[...d.provisions,{id:uid(),...form,amount:+form.amount}]}));toast('Added','g');}setForm(ef);};
   const del=id=>{setData(d=>({...d,provisions:d.provisions.filter(p=>p.id!==id)}));toast('Removed','x');};
@@ -2728,11 +3106,11 @@ function PageMaster({data,setData,toast}){
         </div>
       </div>
       <div className="card"><div className="sh mb2"><div className="sh-t"><Ic n="up" s={14} c="var(--b)"/>CSV Data Import</div></div>
-        <div className="alert ai mb2"><Ic n="prov" s={13}/>CSV columns: <strong>date (YYYY-MM-DD), type (income/expense), category, description, amount, paymentMode</strong>. First row = header.</div>
+        <div className="alert ai mb2"><Ic n="prov" s={13}/>Columns accepted: <strong>date · type · category · description · merchant · paymentMode · amount</strong>. Column order doesn't matter. Date can be any format (DD/MM/YYYY, YYYY-MM-DD, 15-Apr-2025 etc.).</div>
         <input type="file" ref={fileRef} accept=".csv" style={{display:'none'}} onChange={handleCSV}/>
         <div style={{display:'flex',gap:8}}>
           <button className="btn btn-s" onClick={()=>fileRef.current.click()}><Ic n="up" s={13}/>Choose CSV &amp; Import</button>
-          <button className="btn btn-g btn-sm" onClick={()=>{const b=new Blob(['date,type,category,description,amount,paymentMode\n2026-04-01,expense,House Rent,April Rent,20500,NEFT/Bank Transfer\n'],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='finmanager-template.csv';a.click();}}>
+          <button className="btn btn-g btn-sm" onClick={()=>{const b=new Blob(['date,type,category,description,merchant,paymentMode,amount\n01/04/2026,expense,House Rent,April Rent,,NEFT/Bank Transfer,20500\n01/04/2026,income,Salary / Consultancy,April Salary,,NEFT/Bank Transfer,83550\n05/04/2026,expense,Groceries & Food,Monthly groceries,DMart,UPI,4500\n'],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='myeecfo-template.csv';a.click();}}>
             <Ic n="dl" s={12}/>Sample Template
           </button>
         </div>
@@ -2957,7 +3335,7 @@ function PageData({data,setData,toast}){
       const netWorth=bankBal+cashBal+fdBal-ccLiab-loanOS-provTotal;
       // Sheet 1: Summary
       const sumRows=[
-        ['FinSave Manager — Export',data.profile.name,new Date().toLocaleDateString('en-IN')],
+        ['MyeeCFO — Export',data.profile.name,new Date().toLocaleDateString('en-IN')],
         [],
         ['Period',`${data.profile.periodStart} to ${data.profile.periodEnd}`],
         ['Total Income (Period)',totalInc],
@@ -4065,7 +4443,7 @@ MAJOR_CATS:${(data.majorExpenseCategories||[]).join(',')||'none'}`.trim();
     if(!isChat){setResult('');setActivePrompt(userPrompt);}
 
     const ctx=buildContext();
-    const systemPrompt=`You are an Indian personal finance advisor analyzing real data from "Personal FinManager". Use actual numbers (INR). Be specific, actionable. Reference 80C/80D/NPS/SIP where relevant. 3-5 prioritized tips. Celebrate wins before flagging concerns. Format with short paragraphs and dashes. Numbers in Lakhs(L)/Thousands(K). Never fabricate data.`;
+    const systemPrompt=`You are an Indian personal finance advisor analyzing real data from "MyeeCFO". Use actual numbers (INR). Be specific, actionable. Reference 80C/80D/NPS/SIP where relevant. 3-5 prioritized tips. Celebrate wins before flagging concerns. Format with short paragraphs and dashes. Numbers in Lakhs(L)/Thousands(K). Never fabricate data.`;
 
     const userMsg=isChat?userPrompt:`Here is my complete financial data:\n\n${ctx}\n\n---\n\nBased on this data, please: ${userPrompt}`;
     const messages=isChat
@@ -4927,49 +5305,6 @@ function App(){
       </main>
 
       {toast&&<Toast msg={toast.msg} type={toast.type} onClose={()=>setToast(null)}/>}
-
-      {/* ── Mobile Bottom Navigation ── */}
-      <nav className="mob-nav">
-        {[
-          {id:'dashboard',n:'home',l:'Home'},
-          {id:'expense',n:'exp',l:'Expenses'},
-          {id:'cfo',n:'pnl',l:'CFO'},
-          {id:'goals',n:'budget',l:'Goals'},
-          {id:'_more',n:'gear',l:'More'},
-        ].map(item=>(
-          <button key={item.id} className={`mob-nav-item ${pg===item.id?'on':''}`}
-            onClick={()=>item.id==='_more'?setMobMenu(v=>!v):setPg(item.id)}>
-            <Ic n={item.n} s={20} c={pg===item.id?'var(--g)':'var(--n400)'}/>
-            {item.l}
-          </button>
-        ))}
-      </nav>
-
-      {/* ── Mobile Full Menu Drawer ── */}
-      {mobMenu&&(
-        <div className="mob-drawer" onClick={()=>setMobMenu(false)}>
-          <div className="mob-drawer-panel" onClick={e=>e.stopPropagation()}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'4px 20px 8px'}}>
-              <div style={{fontWeight:800,fontSize:14,color:'var(--n800)'}}>All Pages</div>
-              <button style={{background:'none',border:'none',cursor:'pointer',fontSize:20,color:'var(--n400)'}} onClick={()=>setMobMenu(false)}>✕</button>
-            </div>
-            {NAV.map(g=>(
-              <div key={g.s}>
-                <div className="mob-drawer-group">{g.s}</div>
-                {g.items.map(item=>(
-                  <button key={item.id} className={`mob-drawer-item ${pg===item.id?'on':''}`}
-                    onClick={()=>{setPg(item.id);setMobMenu(false);}}>
-                    <Ic n={item.n} s={16} c={pg===item.id?'var(--g)':'var(--n500)'}/>
-                    {item.l}
-                    {item.id==='cc'&&ccAlerts>0&&<span className="sb-badge" style={{marginLeft:'auto'}}>{ccAlerts}</span>}
-                    {item.id==='recurring'&&recurringDue>0&&<span className="sb-badge" style={{marginLeft:'auto'}}>{recurringDue}</span>}
-                  </button>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </>
   );
 }
