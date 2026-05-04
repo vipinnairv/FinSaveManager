@@ -311,6 +311,24 @@ tbody tr:hover td{background:#fafbfc}
   color:var(--n400);cursor:pointer;border:none;background:none;
   padding:0;font-family:var(--f);transition:color .13s}
 .mob-nav-btn.on{color:var(--g)}
+/* ── MOBILE MORE DRAWER ── */
+.mob-drawer-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:400}
+.mob-drawer-overlay.open{display:block}
+.mob-drawer{position:fixed;bottom:58px;left:0;right:0;background:var(--W);border-radius:20px 20px 0 0;
+  z-index:401;max-height:72vh;overflow-y:auto;padding:8px 0 12px;
+  box-shadow:0 -4px 24px rgba(0,0,0,.15);
+  transform:translateY(100%);transition:transform .22s cubic-bezier(.4,0,.2,1)}
+.mob-drawer.open{transform:translateY(0)}
+.mob-drawer-handle{width:36px;height:4px;background:var(--n200);border-radius:4px;margin:6px auto 14px}
+.mob-drawer-section{padding:0 16px 6px}
+.mob-drawer-label{font-size:9.5px;font-weight:700;color:var(--n300);letter-spacing:.8px;
+  text-transform:uppercase;padding:8px 4px 4px}
+.mob-drawer-item{display:flex;align-items:center;gap:10px;padding:11px 8px;
+  border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;color:var(--n500);
+  border:none;background:none;width:100%;text-align:left;font-family:var(--f)}
+.mob-drawer-item:active{background:var(--n50)}
+.mob-drawer-item.on{color:var(--g);background:var(--gl);font-weight:700}
+.mob-drawer-item .di{font-size:16px;width:22px;text-align:center}
 
 /* ── DARK MODE ──────────────────────────────── */
 [data-theme="dark"]{
@@ -6493,16 +6511,67 @@ function App(){
       {/* Quick-Add bottom sheet */}
       {quickAdd&&<QuickAdd data={data} setData={setData} toast={showToast} onClose={()=>setQuickAdd(false)}/>}
 
+      {/* ── Mobile More Drawer ── */}
+      <div className={`mob-drawer-overlay${mobMenu?' open':''}`} onClick={()=>setMobMenu(false)}/>
+      <div className={`mob-drawer${mobMenu?' open':''}`}>
+        <div className="mob-drawer-handle"/>
+        {[
+          {s:'Overview',items:[
+            {id:'dashboard',icon:'🏠',l:'Dashboard'},
+            {id:'fund',icon:'💰',l:'Fund Balance'},
+            {id:'pnl',icon:'📋',l:'P & L Statement'},
+          ]},
+          {s:'Transactions',items:[
+            {id:'expense',icon:'↓',l:'Expense Tracker'},
+            {id:'income',icon:'↑',l:'Income Tracker'},
+            {id:'budget',icon:'📊',l:'Budget vs Actual'},
+            {id:'provision',icon:'🗂',l:'Provisions'},
+          ]},
+          {s:'Liabilities',items:[
+            {id:'cc',icon:'💳',l:'Credit Cards'},
+            {id:'loan',icon:'🏦',l:'Loan Tracker'},
+          ]},
+          {s:'Analysis',items:[
+            {id:'cfo',icon:'📈',l:'CFO Dashboard'},
+            {id:'debt',icon:'⚖',l:'Debt Optimizer'},
+            {id:'ai',icon:'🤖',l:'AI Insights'},
+          ]},
+          {s:'Planning',items:[
+            {id:'goals',icon:'🎯',l:'Savings Goals'},
+            {id:'invtracker',icon:'💹',l:'Investment Tracker'},
+            {id:'forecast',icon:'🔭',l:'Financial Forecast'},
+            {id:'recurring',icon:'🔁',l:'Recurring Transactions'},
+            {id:'planner',icon:'📅',l:'Financial Planner'},
+          ]},
+          {s:'Settings',items:[
+            {id:'data',icon:'🗄',l:'Data Management'},
+            {id:'profile',icon:'⚙',l:'Profile & Period'},
+          ]},
+        ].map(sec=>(
+          <div key={sec.s} className="mob-drawer-section">
+            <div className="mob-drawer-label">{sec.s}</div>
+            {sec.items.map(item=>(
+              <button key={item.id} className={`mob-drawer-item${pg===item.id?' on':''}`}
+                onClick={()=>{setPg(item.id);setMobMenu(false)}}>
+                <span className="di">{item.icon}</span>{item.l}
+              </button>
+            ))}
+          </div>
+        ))}
+      </div>
+
       {/* ── Mobile Bottom Navigation ── */}
       <nav className="mob-nav">
         {[
           {id:'dashboard',icon:'🏠',l:'Home'},
           {id:'expense',icon:'↓',l:'Expenses'},
           {id:'cfo',icon:'📊',l:'CFO'},
-          {id:'loan',icon:'$',l:'Loans'},
-          {id:'profile',icon:'⚙',l:'More'},
+          {id:'loan',icon:'🏦',l:'Loans'},
+          {id:'_more',icon:'☰',l:'More'},
         ].map(item=>(
-          <button key={item.id} className={`mob-nav-btn ${pg===item.id?'on':''}`} onClick={()=>setPg(item.id)}>
+          <button key={item.id}
+            className={`mob-nav-btn ${item.id==='_more'?mobMenu?'on':'':pg===item.id?'on':''}`}
+            onClick={()=>item.id==='_more'?setMobMenu(v=>!v):( setMobMenu(false),setPg(item.id))}>
             <span style={{fontSize:18,lineHeight:1}}>{item.icon}</span>
             {item.l}
           </button>
