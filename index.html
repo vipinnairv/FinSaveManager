@@ -3015,9 +3015,12 @@ function PageLoans({data,setData,toast}){
     const phases=l.phases&&l.phases.length?[...l.phases].sort((a,b)=>a.fromMonth-b.fromMonth):[{fromMonth:1,emi:l.emi,roi:l.roi}];
     const now=new Date(),start=new Date(l.startDate||new Date());
     const elapsed=Math.max(0,(now.getFullYear()-start.getFullYear())*12+(now.getMonth()-start.getMonth()));
+    // Use paid EMI count as the source of truth for next installment — whichever is higher wins
+    const paidCount=(l.paidEmis||[]).length;
+    const startFrom=Math.max(elapsed,paidCount);
     const rows=[];let bal=l.outstanding;
-    for(let i=0;i<l.tenure-elapsed&&bal>0;i++){
-      const inst=elapsed+i+1;
+    for(let i=0;i<l.tenure-startFrom&&bal>0;i++){
+      const inst=startFrom+i+1;
       const ph=[...phases].reverse().find(p=>inst>=p.fromMonth)||phases[0];
       const intAmt=Math.round(bal*ph.roi/100/12);
       const prin=Math.min(bal,ph.emi-intAmt);
