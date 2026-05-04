@@ -265,6 +265,33 @@ tbody tr:hover td{background:#fafbfc}
 .mt1{margin-top:4px}.mt2{margin-top:8px}.mt3{margin-top:13px}
 @keyframes fadein{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 .page>*{animation:fadein .2s ease both}
+/* ── MOBILE BOTTOM NAV (base — hidden by default, shown via media query below) ── */
+.mob-nav{display:none;position:fixed;bottom:0;left:0;right:0;height:58px;
+  background:var(--W);border-top:1.5px solid var(--n200);z-index:300;
+  align-items:stretch;box-shadow:0 -2px 10px rgba(0,0,0,.07)}
+.mob-nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:3px;font-size:9px;font-weight:600;
+  color:var(--n400);cursor:pointer;border:none;background:none;
+  padding:0;font-family:var(--f);transition:color .13s}
+.mob-nav-btn.on{color:var(--g)}
+/* ── MOBILE MORE DRAWER (base) ── */
+.mob-drawer-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:400}
+.mob-drawer-overlay.open{display:block}
+.mob-drawer{position:fixed;bottom:58px;left:0;right:0;background:var(--W);border-radius:20px 20px 0 0;
+  z-index:401;max-height:72vh;overflow-y:auto;padding:8px 0 12px;
+  box-shadow:0 -4px 24px rgba(0,0,0,.15);
+  transform:translateY(100%);transition:transform .22s cubic-bezier(.4,0,.2,1)}
+.mob-drawer.open{transform:translateY(0)}
+.mob-drawer-handle{width:36px;height:4px;background:var(--n200);border-radius:4px;margin:6px auto 14px}
+.mob-drawer-section{padding:0 16px 6px}
+.mob-drawer-label{font-size:9.5px;font-weight:700;color:var(--n300);letter-spacing:.8px;
+  text-transform:uppercase;padding:8px 4px 4px}
+.mob-drawer-item{display:flex;align-items:center;gap:10px;padding:11px 8px;
+  border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;color:var(--n500);
+  border:none;background:none;width:100%;text-align:left;font-family:var(--f)}
+.mob-drawer-item:active{background:var(--n50)}
+.mob-drawer-item.on{color:var(--g);background:var(--gl);font-weight:700}
+.mob-drawer-item .di{font-size:16px;width:22px;text-align:center}
 /* ── RESPONSIVE BREAKPOINTS ────────── */
 /* 1366px laptops: main area ≈ 1146px → g4 stays 4-col (286px each) — OK */
 @media(max-width:1280px){
@@ -295,6 +322,8 @@ tbody tr:hover td{background:#fafbfc}
   .page{padding:10px 12px 76px}
   .mob-nav{display:flex}
   .tb-desktop{display:none!important}
+  .qa-btn{bottom:70px;right:14px;width:46px;height:46px;font-size:22px}
+  #gfooter{display:none!important}
 }
 @media(max-width:480px){
   .g4,.g3{grid-template-columns:1fr}
@@ -302,34 +331,6 @@ tbody tr:hover td{background:#fafbfc}
   .ph .btn{font-size:11px;padding:6px 10px}
   .page{padding:8px 10px 76px}
 }
-/* ── MOBILE BOTTOM NAV ── */
-.mob-nav{display:none;position:fixed;bottom:0;left:0;right:0;height:58px;
-  background:var(--W);border-top:1.5px solid var(--n200);z-index:300;
-  align-items:stretch;box-shadow:0 -2px 10px rgba(0,0,0,.07)}
-.mob-nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;
-  justify-content:center;gap:3px;font-size:9px;font-weight:600;
-  color:var(--n400);cursor:pointer;border:none;background:none;
-  padding:0;font-family:var(--f);transition:color .13s}
-.mob-nav-btn.on{color:var(--g)}
-/* ── MOBILE MORE DRAWER ── */
-.mob-drawer-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:400}
-.mob-drawer-overlay.open{display:block}
-.mob-drawer{position:fixed;bottom:58px;left:0;right:0;background:var(--W);border-radius:20px 20px 0 0;
-  z-index:401;max-height:72vh;overflow-y:auto;padding:8px 0 12px;
-  box-shadow:0 -4px 24px rgba(0,0,0,.15);
-  transform:translateY(100%);transition:transform .22s cubic-bezier(.4,0,.2,1)}
-.mob-drawer.open{transform:translateY(0)}
-.mob-drawer-handle{width:36px;height:4px;background:var(--n200);border-radius:4px;margin:6px auto 14px}
-.mob-drawer-section{padding:0 16px 6px}
-.mob-drawer-label{font-size:9.5px;font-weight:700;color:var(--n300);letter-spacing:.8px;
-  text-transform:uppercase;padding:8px 4px 4px}
-.mob-drawer-item{display:flex;align-items:center;gap:10px;padding:11px 8px;
-  border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;color:var(--n500);
-  border:none;background:none;width:100%;text-align:left;font-family:var(--f)}
-.mob-drawer-item:active{background:var(--n50)}
-.mob-drawer-item.on{color:var(--g);background:var(--gl);font-weight:700}
-.mob-drawer-item .di{font-size:16px;width:22px;text-align:center}
-
 /* ── DARK MODE ──────────────────────────────── */
 [data-theme="dark"]{
   --W:#1e293b;
@@ -2787,8 +2788,9 @@ function PageCC({data,setData,toast}){
    LOANS
 ══════════════════════════════════════ */
 /* ── LoanCard: extracted so useState(showAmort) is at component top-level (Rules of Hooks) ── */
-function LoanCard({l,buildAmort,openEdit,del}){
+function LoanCard({l,buildAmort,openEdit,del,setData,toast}){
   const [showAmort,setShowAmort]=useState(false);
+  const [showHistory,setShowHistory]=useState(false);
   const amort=buildAmort(l);
   const remInterest=amort.reduce((s,r)=>s+r.interest,0);
   const futurePayout=amort.reduce((s,r)=>s+r.emi,0);
@@ -2798,21 +2800,55 @@ function LoanCard({l,buildAmort,openEdit,del}){
   const curPhase=(l.phases&&l.phases.length?[...l.phases].sort((a,b)=>b.fromMonth-a.fromMonth).find(p=>1>=p.fromMonth)||l.phases[0]:null);
   const curEmi=curPhase?curPhase.emi:l.emi;
   const curRoi=curPhase?curPhase.roi:l.roi;
+  const paidEmis=l.paidEmis||[];
+  const nextDue=amort[0]||null;
+  const isFullyPaid=l.outstanding<=0||amort.length===0;
+
+  const markPaid=(row)=>{
+    setData(d=>({...d,loans:d.loans.map(lo=>{
+      if(lo.id!==l.id)return lo;
+      const newPaid=[...(lo.paidEmis||[]),{
+        n:row.n,date:row.date,emi:row.emi,principal:row.principal,
+        interest:row.interest,opening:row.opening,closing:row.closing,paidOn:new Date().toISOString().slice(0,10)
+      }];
+      return{...lo,outstanding:Math.max(0,row.closing),remaining:Math.max(0,(lo.remaining||0)-1),paidEmis:newPaid};
+    })}));
+    toast&&toast(`EMI #${row.n} paid ✓  |  New Outstanding: ${fmtINR(Math.max(0,row.closing))}`,'g');
+  };
+
+  const undoLastPaid=()=>{
+    if(!paidEmis.length)return;
+    const last=paidEmis[paidEmis.length-1];
+    setData(d=>({...d,loans:d.loans.map(lo=>{
+      if(lo.id!==l.id)return lo;
+      return{...lo,outstanding:last.opening!==undefined?last.opening:lo.outstanding+last.principal,
+        remaining:(lo.remaining||0)+1,paidEmis:lo.paidEmis.slice(0,-1)};
+    })}));
+    toast&&toast('Last EMI payment undone','o');
+  };
+
   return(
     <div className="card mb2">
+      {/* Header */}
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:12}}>
         <div>
           <div style={{fontWeight:800,fontSize:14}}>{l.bank} <span className="tag tb" style={{marginLeft:6,fontSize:10.5}}>{l.type}</span>
             {l.phases&&l.phases.length>1&&<span className="tag to" style={{marginLeft:6,fontSize:9.5}}>Variable EMI</span>}
+            {isFullyPaid&&<span className="tag tg" style={{marginLeft:6,fontSize:9.5}}>✓ Fully Paid</span>}
           </div>
           <div style={{fontSize:10.5,color:'var(--n400)',fontFamily:'var(--m)',marginTop:2}}>{l.accNo}</div>
         </div>
         <div style={{display:'flex',gap:7,alignItems:'center'}}>
-          <div style={{textAlign:'right'}}><div style={{fontSize:9.5,color:'var(--n400)',textTransform:'uppercase',fontWeight:600}}>Outstanding</div><div style={{fontFamily:'var(--m)',fontSize:16,fontWeight:700,color:'var(--r)'}}>{fmtINR(l.outstanding)}</div></div>
+          <div style={{textAlign:'right'}}>
+            <div style={{fontSize:9.5,color:'var(--n400)',textTransform:'uppercase',fontWeight:600}}>Outstanding</div>
+            <div style={{fontFamily:'var(--m)',fontSize:16,fontWeight:700,color:isFullyPaid?'var(--g)':'var(--r)'}}>{fmtINR(l.outstanding)}</div>
+          </div>
           <button className="bic" onClick={()=>openEdit(l)}><Ic n="edit" s={11}/></button>
           <button className="bic red" onClick={()=>del(l.id)}><Ic n="del" s={11}/></button>
         </div>
       </div>
+
+      {/* Stats grid */}
       <div className="g4 mb2" style={{gap:10}}>
         {[
           {l:'EMI/Month',v:fmtINR(curEmi)},
@@ -2821,20 +2857,104 @@ function LoanCard({l,buildAmort,openEdit,del}){
           {l:'End Date',v:fmtDate(l.endDate)},
           {l:'Loan Amount',v:fmtINR(l.original)},
           {l:'Total Payable',v:fmtINR(l.emi*l.tenure)},
-          {l:'Total Interest',v:fmtINR(tInt)},
-          {l:'Months Paid',v:`${l.tenure-rem} of ${l.tenure}`},
+          {l:'EMIs Paid',v:`${paidEmis.length} of ${l.tenure}`},
           {l:'Remaining Interest',v:fmtINR(remInterest),c:'var(--o)'},
-          {l:'Future Payout',v:fmtINR(futurePayout),c:'var(--r)'},
         ].map(x=>(
           <div key={x.l}><div style={{fontSize:9.5,color:'var(--n400)',textTransform:'uppercase',fontWeight:600,marginBottom:2}}>{x.l}</div><div style={{fontSize:12.5,fontWeight:700,color:x.c||''}}>{x.v}</div></div>
         ))}
       </div>
-      {/* Repayment progress */}
-      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
-        <div className="prog" style={{flex:1,height:6}}><div className="pf" style={{width:`${pct}%`,background:'var(--g)'}}/></div>
+
+      {/* Repayment progress bar */}
+      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
+        <div className="prog" style={{flex:1,height:7}}><div className="pf" style={{width:`${pct}%`,background:'var(--g)'}}/></div>
         <span style={{fontFamily:'var(--m)',fontSize:11,color:'var(--gd)',width:40,textAlign:'right'}}>{pct.toFixed(1)}%</span>
         <span style={{fontSize:10.5,color:'var(--n400)'}}>repaid</span>
       </div>
+
+      {/* ── NEXT DUE EMI ── */}
+      {!isFullyPaid&&nextDue&&(
+        <div style={{border:'2px solid var(--gl)',borderRadius:10,padding:'12px 14px',marginBottom:10,background:'linear-gradient(135deg,rgba(0,179,134,.05),rgba(0,179,134,.02))'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
+            <div>
+              <div style={{fontWeight:700,fontSize:12.5,marginBottom:4}}>
+                <span style={{background:'var(--g)',color:'#fff',borderRadius:5,padding:'2px 8px',fontSize:10.5,fontWeight:700,marginRight:8}}>Next Due</span>
+                EMI #{nextDue.n} · {fmtDate(nextDue.date)}
+              </div>
+              <div style={{fontSize:11.5,color:'var(--n500)',display:'flex',gap:14,flexWrap:'wrap'}}>
+                <span>💰 EMI: <strong style={{fontFamily:'var(--m)'}}>{fmtINR(nextDue.emi)}</strong></span>
+                <span>🏛 Principal: <strong style={{color:'var(--g)',fontFamily:'var(--m)'}}>{fmtINR(nextDue.principal)}</strong></span>
+                <span>📈 Interest: <strong style={{color:'var(--o)',fontFamily:'var(--m)'}}>{fmtINR(nextDue.interest)}</strong></span>
+              </div>
+              <div style={{fontSize:11,color:'var(--n400)',marginTop:4}}>
+                Balance after payment: <strong style={{fontFamily:'var(--m)',color:'var(--r)'}}>{fmtINR(nextDue.closing)}</strong>
+              </div>
+            </div>
+            <button
+              onClick={()=>markPaid(nextDue)}
+              style={{background:'var(--g)',color:'#fff',border:'none',borderRadius:8,padding:'8px 16px',fontSize:12,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',gap:6,fontFamily:'var(--f)',whiteSpace:'nowrap'}}>
+              ✓ Mark as Paid
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── EMI PAYMENT HISTORY ── */}
+      {paidEmis.length>0&&(
+        <div style={{marginBottom:10}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
+            <button onClick={()=>setShowHistory(v=>!v)}
+              style={{background:'none',border:'none',cursor:'pointer',fontSize:11.5,fontWeight:700,color:'var(--n600)',display:'flex',alignItems:'center',gap:5,fontFamily:'var(--f)',padding:0}}>
+              {showHistory?'▲':'▼'} Payment History <span style={{background:'var(--gl)',color:'var(--g)',borderRadius:10,padding:'1px 8px',fontSize:10.5,fontWeight:700,marginLeft:4}}>{paidEmis.length} paid</span>
+            </button>
+            {paidEmis.length>0&&(
+              <button onClick={undoLastPaid}
+                style={{background:'none',border:'1px solid var(--n200)',borderRadius:6,padding:'3px 9px',fontSize:10.5,cursor:'pointer',color:'var(--n500)',fontFamily:'var(--f)'}}>
+                ↩ Undo Last
+              </button>
+            )}
+          </div>
+          {showHistory&&(
+            <div style={{border:'1px solid var(--n100)',borderRadius:8,overflow:'hidden'}}>
+              <div style={{maxHeight:220,overflowY:'auto'}}>
+                <table style={{width:'100%',borderCollapse:'collapse',fontSize:11.5}}>
+                  <thead><tr style={{background:'var(--n50)',position:'sticky',top:0}}>
+                    <th style={{padding:'6px 10px',textAlign:'left',fontSize:9.5,fontWeight:700,textTransform:'uppercase',color:'var(--n500)'}}>#</th>
+                    <th style={{padding:'6px 10px',textAlign:'left',fontSize:9.5,fontWeight:700,textTransform:'uppercase',color:'var(--n500)'}}>Due Date</th>
+                    <th style={{padding:'6px 10px',textAlign:'right',fontSize:9.5,fontWeight:700,textTransform:'uppercase',color:'var(--n500)'}}>EMI</th>
+                    <th style={{padding:'6px 10px',textAlign:'right',fontSize:9.5,fontWeight:700,textTransform:'uppercase',color:'var(--n500)'}}>Principal</th>
+                    <th style={{padding:'6px 10px',textAlign:'right',fontSize:9.5,fontWeight:700,textTransform:'uppercase',color:'var(--n500)'}}>Interest</th>
+                    <th style={{padding:'6px 10px',textAlign:'right',fontSize:9.5,fontWeight:700,textTransform:'uppercase',color:'var(--n500)'}}>Balance After</th>
+                    <th style={{padding:'6px 10px',textAlign:'left',fontSize:9.5,fontWeight:700,textTransform:'uppercase',color:'var(--n500)'}}>Paid On</th>
+                  </tr></thead>
+                  <tbody>
+                    {[...paidEmis].reverse().map((p,i)=>(
+                      <tr key={i} style={{borderTop:'1px solid var(--n100)',background:i%2===0?'var(--W)':'var(--n50)'}}>
+                        <td style={{padding:'6px 10px',fontWeight:700}}>
+                          <span style={{color:'var(--g)',marginRight:5}}>✓</span>{p.n}
+                        </td>
+                        <td style={{padding:'6px 10px',fontFamily:'var(--m)',fontSize:11}}>{fmtDate(p.date)}</td>
+                        <td style={{padding:'6px 10px',textAlign:'right',fontWeight:700,fontFamily:'var(--m)'}}>{fmtINR(p.emi)}</td>
+                        <td style={{padding:'6px 10px',textAlign:'right',color:'var(--g)',fontFamily:'var(--m)'}}>{fmtINR(p.principal)}</td>
+                        <td style={{padding:'6px 10px',textAlign:'right',color:'var(--o)',fontFamily:'var(--m)'}}>{fmtINR(p.interest)}</td>
+                        <td style={{padding:'6px 10px',textAlign:'right',color:'var(--r)',fontFamily:'var(--m)'}}>{fmtINR(p.closing)}</td>
+                        <td style={{padding:'6px 10px',color:'var(--n400)',fontSize:10.5}}>{fmtDate(p.paidOn)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot><tr style={{borderTop:'2px solid var(--n200)',background:'var(--n50)'}}>
+                    <td colSpan={2} style={{padding:'6px 10px',fontWeight:700,fontSize:12}}>Total Paid ({paidEmis.length} EMIs)</td>
+                    <td style={{padding:'6px 10px',textAlign:'right',fontWeight:700,fontFamily:'var(--m)'}}>{fmtINR(paidEmis.reduce((s,p)=>s+p.emi,0))}</td>
+                    <td style={{padding:'6px 10px',textAlign:'right',color:'var(--g)',fontWeight:700,fontFamily:'var(--m)'}}>{fmtINR(paidEmis.reduce((s,p)=>s+p.principal,0))}</td>
+                    <td style={{padding:'6px 10px',textAlign:'right',color:'var(--o)',fontWeight:700,fontFamily:'var(--m)'}}>{fmtINR(paidEmis.reduce((s,p)=>s+p.interest,0))}</td>
+                    <td colSpan={2}/>
+                  </tr></tfoot>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* EMI Phase history */}
       {l.phases&&l.phases.length>1&&(
         <div style={{marginBottom:8}}>
@@ -2850,18 +2970,19 @@ function LoanCard({l,buildAmort,openEdit,del}){
           </div>
         </div>
       )}
+
       {/* Amortization toggle */}
       <button className="btn btn-g btn-sm" style={{fontSize:11,padding:'4px 10px'}} onClick={()=>setShowAmort(v=>!v)}>
-        {showAmort?'▲ Hide':'▼ Show'} Amortization Schedule ({amort.length} installments)
+        {showAmort?'▲ Hide':'▼ Show'} Full Amortization Schedule ({amort.length} remaining)
       </button>
       {showAmort&&(
         <div className="tw mt2" style={{maxHeight:320,overflowY:'auto'}}>
           <table>
             <thead><tr><th>#</th><th>Date</th><th className="num">Opening (₹)</th><th className="num">EMI (₹)</th><th className="num">Principal (₹)</th><th className="num">Interest (₹)</th><th className="num">Closing (₹)</th><th>ROI</th></tr></thead>
             <tbody>
-              {amort.map(r=>(
-                <tr key={r.n}>
-                  <td style={{fontWeight:700,color:'var(--n400)',fontSize:11}}>{r.n}</td>
+              {amort.map((r,i)=>(
+                <tr key={r.n} style={{background:i===0?'rgba(0,179,134,.06)':''}}>
+                  <td style={{fontWeight:700,color:i===0?'var(--g)':'var(--n400)',fontSize:11}}>{i===0?'▶':''}{r.n}</td>
                   <td style={{fontFamily:'var(--m)',fontSize:11}}>{fmtDate(r.date)}</td>
                   <td className="num" style={{fontSize:11}}>{fmtINR(r.opening)}</td>
                   <td className="num" style={{fontWeight:700}}>{fmtINR(r.emi)}</td>
@@ -3059,7 +3180,7 @@ function PageLoans({data,setData,toast}){
           </table>
         </div>
       </div>
-      {loans.map(l=><LoanCard key={l.id} l={l} buildAmort={buildAmort} openEdit={openEdit} del={del}/>)}
+      {loans.map(l=><LoanCard key={l.id} l={l} buildAmort={buildAmort} openEdit={openEdit} del={del} setData={setData} toast={toast}/>)}
       {modal&&<Modal title={modal==='add'?'Add Loan':'Edit Loan'} onClose={close} foot={<><button className="btn btn-s btn-sm" onClick={close}>Cancel</button><button className="btn btn-p btn-sm" onClick={save}><Ic n={modal==='add'?'plus':'ok'} s={12} c="#fff"/>{modal==='add'?'Add':'Save'}</button></>}>{LF}</Modal>}
     </div>
   );
@@ -3589,6 +3710,7 @@ function PageData({data,setData,toast}){
     if(!d.accounts)d.accounts=[];
     if(!d.creditCards)d.creditCards=[];
     if(!d.loans)d.loans=[];
+    d.loans=d.loans.map(l=>({...l,paidEmis:l.paidEmis||[]}));
     if(!d.provisions)d.provisions=[];
     if(!d.transactions)d.transactions=[];
     if(!d.incomeCategories)d.incomeCategories=['Salary / Consultancy','Freelance Income','Interest Income','Other Income'];
@@ -6339,6 +6461,12 @@ function App(){
   const showToast=(msg,type)=>setToast({msg,type});
   const [mobMenu,setMobMenu]=useState(false);
   const [quickAdd,setQuickAdd]=useState(false);
+  const [isMobile,setIsMobile]=useState(()=>window.innerWidth<=768);
+  useEffect(()=>{
+    const onResize=()=>setIsMobile(window.innerWidth<=768);
+    window.addEventListener('resize',onResize);
+    return()=>window.removeEventListener('resize',onResize);
+  },[]);
 
   // ── Dark Mode ──────────────────────────────────
   const [darkMode,setDarkMode]=useState(()=>localStorage.getItem('dm')==='1');
@@ -6402,7 +6530,7 @@ function App(){
 
   return(
     <>
-      <aside className="sb">
+      <aside className="sb" style={isMobile?{display:'none'}:{}}>
         <div className="sb-head">
           <div className="sb-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg></div>
           <div>
@@ -6449,14 +6577,14 @@ function App(){
         </div>
       </aside>
 
-      <main className="main">
+      <main className="main" style={isMobile?{marginLeft:0,maxWidth:'100vw'}:{}}>
         <div className="topbar">
           <div className="tb-left">
             <div className="tb-title">{PT[pg]}</div>
             <span style={{fontSize:11.5,color:'var(--n400)'}}>· {periodLabel(data.profile.periodStart,data.profile.periodEnd)}</span>
           </div>
           <div className="tb-right">
-            <span className="tag tg" style={{fontSize:10}} id="tb-live">● Live</span>
+            {!isMobile&&<span className="tag tg" style={{fontSize:10}} id="tb-live">● Live</span>}
             {DriveService._token&&(
               <div style={{display:'flex',alignItems:'center',gap:3}} className="tb-desktop">
                 <button onClick={()=>toggleSyncMode(syncMode==='auto'?'manual':'auto')} className={`tag ${syncMode==='auto'?'tg':'tx'}`} style={{fontSize:9.5,cursor:'pointer',border:'none',fontFamily:'var(--f)',padding:'2px 7px'}} title={syncMode==='auto'?'Auto-sync ON (click to switch to manual)':'Manual sync (click to enable auto)'}>
@@ -6488,14 +6616,13 @@ function App(){
                 <span style={{position:'absolute',top:-2,right:-2,background:'var(--r)',color:'#fff',borderRadius:'50%',width:13,height:13,fontSize:8,fontWeight:700,display:'grid',placeItems:'center'}}>{ccAlerts}</span>
               </button>
             )}
-            <a href="https://calendar.google.com/calendar/r/eventedit?text=FinManager+Consultation+with+Vipin+Nair&details=Consultation+request+via+Personal+FinManager.+Contact:+audit.vipin@gmail.com&location=Google+Meet&add=audit.vipin@gmail.com" target="_blank" rel="noopener noreferrer" style={{textDecoration:'none'}}>
+            <a href="https://calendar.google.com/calendar/r/eventedit?text=FinManager+Consultation+with+Vipin+Nair&details=Consultation+request+via+Personal+FinManager.+Contact:+audit.vipin@gmail.com&location=Google+Meet&add=audit.vipin@gmail.com" target="_blank" rel="noopener noreferrer" style={{textDecoration:'none'}} className="tb-desktop">
               <button className="btn btn-sm" style={{background:'linear-gradient(135deg,#1a73e8,#1557b0)',color:'#fff',border:'none',display:'flex',alignItems:'center',gap:5}}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                 Book Consultation
               </button>
             </a>
-            
-            <button className="btn btn-p btn-sm" onClick={()=>setPg('data')}><Ic n="dl" s={12} c="#fff"/>Backup</button>
+            <button className="btn btn-p btn-sm" onClick={()=>setPg('data')}><Ic n="dl" s={12} c="#fff"/>{!isMobile&&'Backup'}</button>
           </div>
         </div>
         {rp()}
@@ -6511,8 +6638,8 @@ function App(){
       {/* Quick-Add bottom sheet */}
       {quickAdd&&<QuickAdd data={data} setData={setData} toast={showToast} onClose={()=>setQuickAdd(false)}/>}
 
-      {/* ── Mobile More Drawer ── */}
-      <div className={`mob-drawer-overlay${mobMenu?' open':''}`} onClick={()=>setMobMenu(false)}/>
+      {/* ── Mobile More Drawer + Bottom Nav ── */}
+      {isMobile&&<><div className={`mob-drawer-overlay${mobMenu?' open':''}`} onClick={()=>setMobMenu(false)}/>
       <div className={`mob-drawer${mobMenu?' open':''}`}>
         <div className="mob-drawer-handle"/>
         {[
@@ -6561,7 +6688,9 @@ function App(){
       </div>
 
       {/* ── Mobile Bottom Navigation ── */}
-      <nav className="mob-nav">
+      <nav style={{display:'flex',position:'fixed',bottom:0,left:0,right:0,height:58,
+        background:'var(--W)',borderTop:'1.5px solid var(--n200)',zIndex:300,
+        alignItems:'stretch',boxShadow:'0 -2px 10px rgba(0,0,0,.07)'}}>
         {[
           {id:'dashboard',icon:'🏠',l:'Home'},
           {id:'expense',icon:'↓',l:'Expenses'},
@@ -6570,13 +6699,16 @@ function App(){
           {id:'_more',icon:'☰',l:'More'},
         ].map(item=>(
           <button key={item.id}
-            className={`mob-nav-btn ${item.id==='_more'?mobMenu?'on':'':pg===item.id?'on':''}`}
-            onClick={()=>item.id==='_more'?setMobMenu(v=>!v):( setMobMenu(false),setPg(item.id))}>
+            style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',
+              justifyContent:'center',gap:3,fontSize:9,fontWeight:600,
+              color:((item.id==='_more'&&mobMenu)||(item.id!=='_more'&&pg===item.id))?'var(--g)':'var(--n400)',
+              cursor:'pointer',border:'none',background:'none',padding:0,fontFamily:'var(--f)'}}
+            onClick={()=>item.id==='_more'?setMobMenu(v=>!v):(setMobMenu(false),setPg(item.id))}>
             <span style={{fontSize:18,lineHeight:1}}>{item.icon}</span>
             {item.l}
           </button>
         ))}
-      </nav>
+      </nav></>}
     </>
   );
 }
@@ -8537,7 +8669,7 @@ window.PlannerRouter = PlannerRouter;
 /* ===== end planner JS ===== */
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 </script>
-<div style="position:fixed;bottom:0;left:var(--sb);right:0;background:#0f172a;color:#94a3b8;font-size:10.5px;font-family:'Plus Jakarta Sans',sans-serif;padding:6px 20px;display:flex;align-items:center;justify-content:space-between;z-index:9999;border-top:1px solid #1e293b;">
+<div id="gfooter" style="position:fixed;bottom:0;left:var(--sb);right:0;background:#0f172a;color:#94a3b8;font-size:10.5px;font-family:'Plus Jakarta Sans',sans-serif;padding:6px 20px;display:flex;align-items:center;justify-content:space-between;z-index:150;border-top:1px solid #1e293b;">
   <span>© 2024–2026 <strong style="color:#fff">Vipin Nair</strong> · MyeeCFO · All Rights Reserved</span>
   <span>Suggestions &amp; Feedback: <a href="mailto:vipinnair@example.com" style="color:#6ee7b7;text-decoration:none">Send Feedback</a></span>
 </div>
